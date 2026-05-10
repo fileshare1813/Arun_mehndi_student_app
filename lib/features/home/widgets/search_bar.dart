@@ -1,122 +1,163 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-class SearchBarWidget extends StatefulWidget {
-  const SearchBarWidget({super.key});
+class HomeSearchBar extends StatefulWidget {
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final String query;
+
+  const HomeSearchBar({
+    super.key,
+    required this.onChanged,
+    required this.onClear,
+    required this.query,
+  });
 
   @override
-  State<SearchBarWidget> createState() => _SearchBarWidgetState();
+  State<HomeSearchBar> createState() => _HomeSearchBarState();
 }
 
-class _SearchBarWidgetState extends State<SearchBarWidget>
+class _HomeSearchBarState extends State<HomeSearchBar>
     with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
-  late AnimationController controller;
-  late Animation<double> animation;
-
-  final FocusNode focusNode = FocusNode();
+  final TextEditingController _textController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
 
-    controller = AnimationController(
+    _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
 
-    animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    focusNode.addListener(() {
-      if (focusNode.hasFocus) {
-        controller.forward();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _controller.forward();
       } else {
-        controller.reverse();
+        _controller.reverse();
       }
     });
+
+    // Sync text controller with external query
+    if (widget.query.isNotEmpty &&
+        _textController.text != widget.query) {
+      _textController.text = widget.query;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeSearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Agar bahar se clear hua (query empty ho gayi)
+    if (widget.query.isEmpty && _textController.text.isNotEmpty) {
+      _textController.clear();
+    }
   }
 
   @override
   void dispose() {
-    controller.dispose();
-    focusNode.dispose();
+    _controller.dispose();
+    _focusNode.dispose();
+    _textController.dispose();
     super.dispose();
+  }
+
+  void _clearSearch() {
+    _textController.clear();
+    _focusNode.unfocus();
+    widget.onClear();
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: AnimatedBuilder(
-        animation: animation,
-
+        animation: _animation,
         builder: (context, child) {
-
           return Transform.scale(
-            scale: 1 + (animation.value * 0.03),
-
+            scale: 1 + (_animation.value * 0.015),
             child: ClipRRect(
-
-              borderRadius: BorderRadius.circular(18),
-
+              borderRadius: BorderRadius.circular(16),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-
                   decoration: BoxDecoration(
-
-                    color: Colors.white.withOpacity(0.25),
-
-                    borderRadius: BorderRadius.circular(18),
-
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.6),
-                      width: 1.3,
+                      color: _animation.value > 0.5
+                          ? Colors.red.withOpacity(0.3)
+                          : Colors.grey.shade200,
+                      width: 1.5,
                     ),
-
                     boxShadow: [
-
                       BoxShadow(
-                        color: Colors.black.withOpacity(
-                            0.15 + animation.value * 0.1),
-                        blurRadius: 25,
-                        offset: const Offset(0, 10),
-                      )
-
+                        color: Colors.black
+                            .withOpacity(0.05 + _animation.value * 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-
                   child: TextField(
-
-                    focusNode: focusNode,
-
+                    controller: _textController,
+                    focusNode: _focusNode,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 15,
+                    ),
+                    onChanged: widget.onChanged,
                     decoration: InputDecoration(
-
-                      hintText: "Search Mehndi courses...",
-
+                      hintText: "Courses, categories, instructors...",
                       hintStyle: TextStyle(
-                        color: Colors.black.withOpacity(.6),
+                        color: Colors.grey.shade400,
+                        fontSize: 14,
                       ),
 
+                      // ── Prefix: Search Icon ───────────────
                       prefixIcon: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
                           Icons.search,
-                          color: animation.value > 0.5
-                              ? Colors.black
-                              : Colors.black54,
+                          color: _animation.value > 0.5
+                              ? Colors.red
+                              : Colors.grey.shade500,
+                          size: 22,
                         ),
                       ),
 
-                      border: InputBorder.none,
+                      // ── Suffix: Clear Button ──────────────
+                      suffixIcon: widget.query.isNotEmpty
+                          ? GestureDetector(
+                        onTap: _clearSearch,
+                        child: Container(
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.black54,
+                            size: 16,
+                          ),
+                        ),
+                      )
+                          : null,
 
+                      border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
-                        vertical: 16,
+                        vertical: 14,
+                        horizontal: 4,
                       ),
                     ),
                   ),

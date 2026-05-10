@@ -34,9 +34,10 @@ class HomeHeader extends StatelessWidget {
               ),
 
               const SizedBox(height: 4),
-
               Text(
-                user.name,
+                user.name.isNotEmpty
+                    ? '${user.name[0].toUpperCase()}${user.name.substring(1)}'
+                    : user.name,
                 style: AppTextStyles.heading.copyWith(
                   color: AppColors.primary,
                 ),

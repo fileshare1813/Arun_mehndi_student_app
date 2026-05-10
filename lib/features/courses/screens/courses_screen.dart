@@ -16,145 +16,113 @@ class CoursesScreen extends StatefulWidget {
 }
 
 class _CoursesScreenState extends State<CoursesScreen> {
-  List<Course> courses = [];
+  // ── All courses from API (unfiltered) ─────────────────
+  List<Course> _allCourses = [];
 
-  int page = 1;
+  // ── Filtered list shown on screen ─────────────────────
+  List<Course> get _filteredCourses {
+    List<Course> result = List.from(_allCourses);
+
+    // 1. Category filter
+    if (selectedCategory != "All") {
+      result = result
+          .where((c) =>
+      c.category.toLowerCase() == selectedCategory.toLowerCase())
+          .toList();
+    }
+
+    // 2. Level filter
+    if (selectedLevel != null) {
+      final levelMap = {
+        "Beginner": "basic",
+        "Intermediate": "medium",
+        "Pro": "advanced",
+      };
+      final apiLevel = levelMap[selectedLevel!]?.toLowerCase();
+      result = result
+          .where((c) => c.level.toLowerCase() == (apiLevel ?? selectedLevel!.toLowerCase()))
+          .toList();
+    }
+
+    // 3. Search filter
+    if (search.trim().isNotEmpty) {
+      final q = search.trim().toLowerCase();
+      result = result
+          .where((c) =>
+      c.title.toLowerCase().contains(q) ||
+          c.description.toLowerCase().contains(q) ||
+          c.instructor.toLowerCase().contains(q) ||
+          c.category.toLowerCase().contains(q))
+          .toList();
+    }
+
+    return result;
+  }
+
   bool isLoading = true;
-  bool isLoadingMore = false;
-  bool hasMore = true;
-
   String selectedCategory = "All";
   String? selectedLevel;
   String search = "";
   String token = "";
 
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
 
-  // ✅ UI Name : API Value
-  final Map<String, String?> categories = {
-    "All": null,
-    "Mehndi": "mehndi",
-    "Beauty": "beauty",
-    "Makeup": "makeup",
-    "Nail Art": "nail_art",
-  };
+  final List<String> categoryLabels = [
+    "All",
+    "Mehndi",
+    "Beauty",
+    "Makeup",
+    "Nail Art",
+  ];
 
   @override
   void initState() {
     super.initState();
     _init();
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _searchController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final current = _scrollController.position.pixels;
-
-    if (current >= maxScroll - 100 &&
-        !isLoadingMore &&
-        !isLoading &&
-        hasMore) {
-      loadMore();
-    }
-  }
-
   Future<void> _init() async {
     token = await StorageHelper.getToken() ?? "";
-    await fetchCourses();
+    await _fetchAllCourses();
   }
 
-  Future<void> fetchCourses() async {
+  // ── Fetch ALL courses once ─────────────────────────────
+  Future<void> _fetchAllCourses() async {
     if (!mounted) return;
-
-    setState(() {
-      isLoading = true;
-      isLoadingMore = false;
-      page = 1;
-      hasMore = true;
-      courses = [];
-    });
+    setState(() => isLoading = true);
 
     try {
+      // No category/level/search — fetch all
       final data = await CourseService.getCourses(
         token: token,
-        category: categories[selectedCategory],
-        level: selectedLevel,
-        search: search.trim().isEmpty ? null : search.trim(),
         page: 1,
       );
 
-      // ✅ Debug categories
-      if (data.isNotEmpty) {
-        debugPrint("📋 AVAILABLE CATEGORIES:");
-        for (var c in data) {
-          debugPrint("→ ${c.category}");
-        }
-      }
-
       if (!mounted) return;
-
       setState(() {
-        courses = data;
-        hasMore = data.length >= 10;
+        _allCourses = data;
         isLoading = false;
       });
     } catch (e) {
       debugPrint("❌ FETCH ERROR: $e");
-
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  Future<void> loadMore() async {
-    if (isLoadingMore || !hasMore || isLoading) return;
-
-    setState(() => isLoadingMore = true);
-
-    final nextPage = page + 1;
-
-    try {
-      final data = await CourseService.getCourses(
-        token: token,
-        category: categories[selectedCategory],
-        level: selectedLevel,
-        search: search.trim().isEmpty ? null : search.trim(),
-        page: nextPage,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        if (data.isEmpty || data.length < 10) {
-          hasMore = false;
-        }
-
-        if (data.isNotEmpty) {
-          courses.addAll(data);
-          page = nextPage;
-        }
-
-        isLoadingMore = false;
-      });
-    } catch (e) {
-      debugPrint("❌ LOAD MORE ERROR: $e");
-
-      if (mounted) {
-        setState(() => isLoadingMore = false);
-      }
-    }
+  void _clearSearch() {
+    _searchController.clear();
+    _debounce?.cancel();
+    setState(() => search = "");
   }
 
   void _openFilter() {
@@ -164,27 +132,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
       isScrollControlled: true,
       builder: (_) => FilterBottomSheet(
         selectedLevel: selectedLevel,
-        onApply: (level) {
-          setState(() {
-            selectedLevel = level;
-            search = "";
-          });
-
-          fetchCourses();
-        },
-        onClear: () {
-          setState(() {
-            selectedLevel = null;
-          });
-
-          fetchCourses();
-        },
+        onApply: (level) => setState(() => selectedLevel = level),
+        onClear: () => setState(() => selectedLevel = null),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final courses = _filteredCourses;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
 
@@ -210,14 +167,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.grey.shade200,
-                    ),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: Icon(
                     Icons.tune,
-                    color:
-                    selectedLevel != null ? Colors.red : Colors.black54,
+                    color: selectedLevel != null ? Colors.red : Colors.black54,
                     size: 20,
                   ),
                 ),
@@ -244,108 +198,96 @@ class _CoursesScreenState extends State<CoursesScreen> {
       body: Column(
         children: [
 
-          // ✅ SEARCH
+          // ── SEARCH BAR ──────────────────────────────────
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: TextField(
+              controller: _searchController,
               style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 hintText: "Search courses...",
-                hintStyle: TextStyle(
-                  color: Colors.grey.shade400,
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Colors.grey.shade400,
-                ),
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
+                suffixIcon: search.isNotEmpty
+                    ? GestureDetector(
+                  onTap: _clearSearch,
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.black54,
+                      size: 16,
+                    ),
+                  ),
+                )
+                    : null,
                 filled: true,
                 fillColor: Colors.grey.shade100,
-                contentPadding:
-                const EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
               ),
               onChanged: (val) {
-                if (_debounce?.isActive ?? false) {
-                  _debounce!.cancel();
-                }
-
-                _debounce = Timer(
-                  const Duration(milliseconds: 500),
-                      () {
-                    setState(() {
-                      search = val.trim();
-                      selectedCategory = "All";
-                      selectedLevel = null;
-                    });
-
-                    fetchCourses();
-                  },
-                );
+                setState(() => search = val);
+                // Debounce not needed since filtering is local
               },
             ),
           ),
 
-          // ✅ CATEGORY CHIPS
+          // ── CATEGORY CHIPS ──────────────────────────────
           Container(
             color: Colors.white,
             child: Column(
               children: [
-                Divider(
-                  color: Colors.grey.shade100,
-                  height: 1,
-                ),
-
+                Divider(color: Colors.grey.shade100, height: 1),
                 SizedBox(
                   height: 52,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    itemCount: categories.length,
+                        horizontal: 12, vertical: 8),
+                    itemCount: categoryLabels.length,
                     itemBuilder: (_, i) {
-
-                      final title =
-                      categories.keys.elementAt(i);
-
-                      final isSelected =
-                          selectedCategory == title;
+                      final title = categoryLabels[i];
+                      final isSelected = selectedCategory == title;
 
                       return GestureDetector(
-                        onTap: () {
-                          if (selectedCategory == title) return;
-
-                          setState(() {
-                            selectedCategory = title;
-                            search = "";
-                          });
-
-                          fetchCourses();
-                        },
-                        child: Container(
-                          margin:
-                          const EdgeInsets.only(right: 8),
-                          padding:
-                          const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
+                        onTap: () => setState(() {
+                          selectedCategory = title;
+                          search = "";
+                          _searchController.clear();
+                        }),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? Colors.red
                                 : Colors.grey.shade100,
-                            borderRadius:
-                            BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isSelected
                                   ? Colors.red
                                   : Colors.grey.shade200,
                             ),
+                            boxShadow: isSelected
+                                ? [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                                : [],
                           ),
                           child: Text(
                             title,
@@ -368,97 +310,118 @@ class _CoursesScreenState extends State<CoursesScreen> {
             ),
           ),
 
+          // ── Active filter indicator ─────────────────────
+          if (selectedCategory != "All" ||
+              selectedLevel != null ||
+              search.isNotEmpty)
+            Container(
+              color: Colors.white,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.filter_list,
+                      size: 16, color: Colors.grey.shade500),
+                  const SizedBox(width: 6),
+                  Text(
+                    _activeFilterText(courses.length),
+                    style: TextStyle(
+                        fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = "All";
+                        selectedLevel = null;
+                        search = "";
+                      });
+                      _searchController.clear();
+                    },
+                    child: const Text(
+                      "Clear All",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           const SizedBox(height: 8),
 
-          // ✅ COURSE LIST
+          // ── COURSE LIST ─────────────────────────────────
           Expanded(
             child: isLoading
                 ? ListView.builder(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: 6,
-              itemBuilder: (_, __) =>
-              const CourseCardShimmer(),
+              itemBuilder: (_, __) => const CourseCardShimmer(),
             )
-
                 : courses.isEmpty
-
                 ? Center(
               child: Column(
-                mainAxisAlignment:
-                MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-
-                  Icon(
-                    Icons.search_off,
-                    color: Colors.grey.shade300,
-                    size: 60,
-                  ),
-
+                  Icon(Icons.search_off,
+                      color: Colors.grey.shade300, size: 60),
                   const SizedBox(height: 12),
-
                   Text(
                     "No courses found",
                     style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 16,
-                    ),
+                        color: Colors.grey.shade400,
+                        fontSize: 16),
                   ),
-
-                  if (selectedCategory != "All")
-                    Padding(
-                      padding:
-                      const EdgeInsets.only(top: 8),
-                      child: Text(
-                        "Category: $selectedCategory",
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = "All";
+                        selectedLevel = null;
+                        search = "";
+                      });
+                      _searchController.clear();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        "Show All Courses",
                         style: TextStyle(
-                          color:
-                          Colors.grey.shade300,
-                          fontSize: 13,
-                        ),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
+                  ),
                 ],
               ),
             )
-
                 : ListView.builder(
               controller: _scrollController,
               padding:
-              const EdgeInsets.fromLTRB(
-                16,
-                4,
-                16,
-                24,
-              ),
-              itemCount:
-              courses.length +
-                  (isLoadingMore ? 1 : 0),
-              itemBuilder: (_, i) {
-
-                if (i == courses.length) {
-                  return const Padding(
-                    padding:
-                    EdgeInsets.symmetric(
-                        vertical: 24),
-                    child: Center(
-                      child:
-                      CircularProgressIndicator(
-                        color: Colors.red,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  );
-                }
-
-                return CourseCard(
-                  course: courses[i],
-                );
-              },
+              const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              itemCount: courses.length,
+              itemBuilder: (_, i) =>
+                  CourseCard(course: courses[i]),
             ),
           ),
         ],
       ),
     );
+  }
+
+  String _activeFilterText(int count) {
+    final parts = <String>[];
+    if (selectedCategory != "All") parts.add(selectedCategory);
+    if (selectedLevel != null) parts.add(selectedLevel!);
+    if (search.isNotEmpty) parts.add('"$search"');
+    return "$count results";
   }
 }

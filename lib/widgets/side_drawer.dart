@@ -85,11 +85,15 @@ class _SideDrawerState extends State<SideDrawer> {
               const SizedBox(height: 10),
 
               Text(
-                currentUser?.name ?? "Loading...",
-                  style: AppTextStyles.heading.copyWith(color: AppColors.primary
-
-                  )
+                (() {
+                  String text = currentUser?.name ?? "Loading...";
+                  if (text.isEmpty) return text;
+                  return text[0].toUpperCase() + text.substring(1);
+                })(),
+                style: AppTextStyles.heading.copyWith(
+                  color: AppColors.primary,
                 ),
+              ),
 
 
               const Text(

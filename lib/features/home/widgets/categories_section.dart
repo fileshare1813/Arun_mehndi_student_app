@@ -3,19 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class CategoriesSection extends StatelessWidget {
-  const CategoriesSection({super.key, VoidCallback? onSeeAll});
+  final VoidCallback? onSeeAll;
+  final ValueChanged<String>? onCategoryTap; // ✅ NEW: category tap callback
+
+  const CategoriesSection({
+    super.key,
+    this.onSeeAll,
+    this.onCategoryTap,
+  });
 
   Future<List<CategoryModel>> fetchCategories() async {
-    const String url =
-        "https://api.aktuhub.in/api/categories.php";
+    const String url = "https://api.aktuhub.in/api/categories.php";
 
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);
-
       List data = jsonData["data"];
-
       return data.map((e) => CategoryModel.fromJson(e)).toList();
     } else {
       throw Exception("Failed to load categories");
@@ -27,13 +31,10 @@ class CategoriesSection extends StatelessWidget {
     return FutureBuilder<List<CategoryModel>>(
       future: fetchCategories(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(30),
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -54,25 +55,26 @@ class CategoriesSection extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
                     "Categories",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    "See All",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
+                  GestureDetector(
+                    onTap: onSeeAll,
+                    child: const Text(
+                      "See All",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -85,12 +87,13 @@ class CategoriesSection extends StatelessWidget {
                 child: Row(
                   children: categories.map((category) {
                     return Padding(
-                      padding:
-                      const EdgeInsets.only(
-                        right: 20,
-                      ),
+                      padding: const EdgeInsets.only(right: 20),
                       child: CategoryItem(
                         category: category,
+                        // ✅ category tap se home search trigger hoga
+                        onTap: onCategoryTap != null
+                            ? () => onCategoryTap!(category.name)
+                            : null,
                       ),
                     );
                   }).toList(),
@@ -106,10 +109,12 @@ class CategoriesSection extends StatelessWidget {
 
 class CategoryItem extends StatelessWidget {
   final CategoryModel category;
+  final VoidCallback? onTap; // ✅ NEW
 
   const CategoryItem({
     super.key,
     required this.category,
+    this.onTap,
   });
 
   String getEmoji(String name) {
@@ -129,36 +134,36 @@ class CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor:
-          Colors.pink.shade50,
-          child: Text(
-            getEmoji(category.name),
-            style: const TextStyle(
-              fontSize: 26,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.pink.shade50,
+            child: Text(
+              getEmoji(category.name),
+              style: const TextStyle(fontSize: 26),
             ),
           ),
-        ),
 
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
 
-        SizedBox(
-          width: 70,
-          child: Text(
-            category.name,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          SizedBox(
+            width: 70,
+            child: Text(
+              category.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -176,8 +181,7 @@ class CategoryModel {
     required this.description,
   });
 
-  factory CategoryModel.fromJson(
-      Map<String, dynamic> json) {
+  factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       id: json["id"].toString(),
       name: json["name"] ?? "",
