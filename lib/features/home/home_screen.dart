@@ -45,12 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _debounce;
 
   // All available categories (from API / static)
-  final List<String> allCategories = [
-    "Mehndi",
-    "Beauty",
-    "Makeup",
-    "Nail Art",
-  ];
+  final List<String> allCategories = ["Mehndi", "Beauty", "Makeup", "Nail Art"];
 
   @override
   void initState() {
@@ -149,8 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final allCourses = courses.isNotEmpty ? courses : catCourses;
       final Map<String, List<Course>> instructorMap = {};
       for (final c in allCourses) {
-        if (c.instructor.isNotEmpty &&
-            c.instructor.toLowerCase().contains(q)) {
+        if (c.instructor.isNotEmpty && c.instructor.toLowerCase().contains(q)) {
           instructorMap.putIfAbsent(c.instructor, () => []).add(c);
         }
       }
@@ -172,11 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
         instructors = instructorResults.isNotEmpty
             ? instructorResults
             : instructorMap.entries
-            .map((e) => InstructorResult(
-          name: e.key,
-          courses: e.value,
-        ))
-            .toList();
+                  .map((e) => InstructorResult(name: e.key, courses: e.value))
+                  .toList();
         loadingSearch = false;
       });
     } catch (e) {
@@ -186,7 +177,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<List<InstructorResult>> _fetchInstructors(
-      String token, String query) async {
+    String token,
+    String query,
+  ) async {
     // Instructor API endpoint
     try {
       final data = await _getInstructorApi(token, query);
@@ -197,7 +190,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<List<InstructorResult>> _getInstructorApi(
-      String token, String query) async {
+    String token,
+    String query,
+  ) async {
     // If your API has /instructors?search=query use that
     // For now returning empty — courses instructor field se handle ho raha hai upar
     return [];
@@ -221,10 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 8,
-                )
+                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
               ],
             ),
             child: IconButton(
@@ -233,43 +225,41 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        actions: const [
-          NotificationBell(),
-        ],
+        actions: const [NotificationBell()],
       ),
       body: Container(
         color: const Color(0xFFF5F5F5),
         child: currentUser == null
             ? const Center(child: CircularProgressIndicator())
             : Column(
-          children: [
-            // ── White Top Section (Header + Search) ──
-            Container(
-              color: Colors.white,
-              child: Column(
                 children: [
-                  const SizedBox(height: 8),
-                  HomeHeader(user: currentUser!),
-                  const SizedBox(height: 10),
-                  // ✅ Working Search Bar
-                  HomeSearchBar(
-                    onChanged: onSearchChanged,
-                    onClear: clearSearch,
-                    query: searchQuery,
+                  // ── White Top Section (Header + Search) ──
+                  Container(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        HomeHeader(user: currentUser!),
+                        const SizedBox(height: 10),
+                        // ✅ Working Search Bar
+                        HomeSearchBar(
+                          onChanged: onSearchChanged,
+                          onClear: clearSearch,
+                          query: searchQuery,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
+
+                  // ── Content Area ──────────────────────────
+                  Expanded(
+                    child: isSearching
+                        ? _buildSearchResults()
+                        : _buildHomeContent(),
+                  ),
                 ],
               ),
-            ),
-
-            // ── Content Area ──────────────────────────
-            Expanded(
-              child: isSearching
-                  ? _buildSearchResults()
-                  : _buildHomeContent(),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -298,12 +288,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Search Results ─────────────────────────────────────
   Widget _buildSearchResults() {
     if (loadingSearch) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.red),
-      );
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
 
-    final hasResults = searchedCourses.isNotEmpty ||
+    final hasResults =
+        searchedCourses.isNotEmpty ||
         matchedCategories.isNotEmpty ||
         instructors.isNotEmpty;
 
@@ -355,7 +344,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       margin: const EdgeInsets.only(right: 10),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 10),
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(24),
@@ -363,8 +354,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.category_outlined,
-                              size: 16, color: Colors.red),
+                          const Icon(
+                            Icons.category_outlined,
+                            size: 16,
+                            color: Colors.red,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             cat,
@@ -402,10 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // ── Courses ────────────────────────────────
           if (searchedCourses.isNotEmpty) ...[
-            _sectionHeader(
-              "Courses",
-              "${searchedCourses.length} results",
-            ),
+            _sectionHeader("Courses", "${searchedCourses.length} results"),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -439,10 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ],
         ],
@@ -457,11 +445,7 @@ class InstructorResult {
   final List<Course> courses;
   final String? imageUrl;
 
-  InstructorResult({
-    required this.name,
-    required this.courses,
-    this.imageUrl,
-  });
+  InstructorResult({required this.name, required this.courses, this.imageUrl});
 }
 
 // ── Instructor Chip Widget ─────────────────────────────────
@@ -482,23 +466,25 @@ class _InstructorChip extends StatelessWidget {
                 name: instructor.name,
                 title: 'Mehndi Artist',
                 imageUrl:
-                'https://ui-avatars.com/api/?name=${instructor.name}&background=D4AF37&color=fff',
+                    'https://ui-avatars.com/api/?name=${instructor.name}&background=D4AF37&color=fff',
                 bio:
-                'Professional Mehndi Artist with expertise in bridal and traditional designs.',
+                    'Professional Mehndi Artist with expertise in bridal and traditional designs.',
                 totalCourses: instructor.courses.length,
                 totalStudents: '1K+',
                 rating: 4.8,
                 courses: instructor.courses
                     .take(3)
-                    .map((c) => InstructorCourse(
-                  title: c.title,
-                  imageUrl:
-                  'https://api.aktuhub.in/api/uploads/courses/${c.thumbnail}',
-                  lessons: c.totalLessons,
-                  duration: c.duration,
-                  price: '₹${c.price}',
-                  badge: 'POPULAR',
-                ))
+                    .map(
+                      (c) => InstructorCourse(
+                        title: c.title,
+                        imageUrl:
+                            'https://api.aktuhub.in/api/uploads/courses/${c.thumbnail}',
+                        lessons: c.totalLessons,
+                        duration: c.duration,
+                        price: '₹${c.price}',
+                        badge: 'POPULAR',
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -547,9 +533,7 @@ class _SearchCourseCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CourseDetailScreen(course: course),
-        ),
+        MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -579,8 +563,10 @@ class _SearchCourseCard extends StatelessWidget {
                   width: 80,
                   height: 80,
                   color: Colors.grey.shade100,
-                  child: const Icon(Icons.image_not_supported,
-                      color: Colors.black26),
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.black26,
+                  ),
                 ),
               ),
             ),
@@ -617,8 +603,11 @@ class _SearchCourseCard extends StatelessWidget {
                   if (course.instructor.isNotEmpty)
                     Row(
                       children: [
-                        const Icon(Icons.person_outline,
-                            size: 13, color: Colors.grey),
+                        const Icon(
+                          Icons.person_outline,
+                          size: 13,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           course.instructor,
@@ -643,7 +632,9 @@ class _SearchCourseCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(8),

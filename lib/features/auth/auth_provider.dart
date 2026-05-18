@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
@@ -6,144 +7,209 @@ import '../../core/api/api_endpoints.dart';
 import '../../core/helpers/storage_helper.dart';
 
 class AuthProvider extends ChangeNotifier {
+  /*
+  |--------------------------------------------------------------------------
+  | USER DATA
+  |--------------------------------------------------------------------------
+  */
 
   String? token;
+
   Map<String, dynamic>? user;
+
+  /*
+  |--------------------------------------------------------------------------
+  | LOGIN STATUS
+  |--------------------------------------------------------------------------
+  */
 
   bool get isLoggedIn => token != null;
 
   /*
-  -------------------------
-  REGISTER
-  -------------------------
+  |--------------------------------------------------------------------------
+  | REGISTER USER
+  |--------------------------------------------------------------------------
   */
 
   Future<bool> registerUser(
-      String name,
-      String email,
-      String phone,
-      String password
-      ) async {
+    String name,
 
+    String email,
+
+    String phone,
+
+    String password,
+  ) async {
     try {
+      /*
+      |--------------------------------------------------------------------------
+      | API CALL
+      |--------------------------------------------------------------------------
+      */
 
-      final data = await ApiClient.post(
-        ApiEndpoints.register,
-        {
-          "name": name,
-          "email": email,
-          "phone": phone,
-          "password": password
-        },
-      );
+      final data = await ApiClient.post(ApiEndpoints.register, {
+        "name": name,
 
-      /// REGISTER SUCCESS → AUTO LOGIN
-      if(data["status"] == true){
+        "email": email,
+
+        "phone": phone,
+
+        "password": password,
+      });
+
+      debugPrint("REGISTER RESPONSE => $data");
+
+      /*
+      |--------------------------------------------------------------------------
+      | SUCCESS CHECK
+      |--------------------------------------------------------------------------
+      */
+
+      if (data["success"] == true || data["code"] == 200) {
+        /*
+        |--------------------------------------------------------------------------
+        | AUTO LOGIN
+        |--------------------------------------------------------------------------
+        */
 
         return await login(email, password);
-
       }
 
       return false;
-
-    } catch(e){
-
-      debugPrint("REGISTER ERROR: $e");
+    } catch (e) {
+      debugPrint("REGISTER ERROR => $e");
 
       return false;
-
     }
-
   }
 
   /*
-  -------------------------
-  LOGIN
-  -------------------------
+  |--------------------------------------------------------------------------
+  | LOGIN USER
+  |--------------------------------------------------------------------------
   */
 
   Future<bool> login(String email, String password) async {
-
     try {
+      /*
+      |--------------------------------------------------------------------------
+      | API CALL
+      |--------------------------------------------------------------------------
+      */
 
-      final data = await ApiClient.post(
-        ApiEndpoints.login,
-        {
-          "email": email,
-          "password": password
-        },
-      );
+      final data = await ApiClient.post(ApiEndpoints.login, {
+        "email": email,
 
-      if(data["status"] == true){
+        "password": password,
+      });
 
-        /// TOKEN
+      debugPrint("LOGIN RESPONSE => $data");
+
+      /*
+      |--------------------------------------------------------------------------
+      | SUCCESS CHECK
+      |--------------------------------------------------------------------------
+      */
+
+      if (data["success"] == true || data["code"] == 200) {
+        /*
+        |--------------------------------------------------------------------------
+        | TOKEN
+        |--------------------------------------------------------------------------
+        */
+
         token = data["data"]["token"];
 
-        /// USER
+        /*
+        |--------------------------------------------------------------------------
+        | USER
+        |--------------------------------------------------------------------------
+        */
+
         user = data["data"]["user"];
 
-        /// SAVE TOKEN
+        /*
+        |--------------------------------------------------------------------------
+        | SAVE TOKEN
+        |--------------------------------------------------------------------------
+        */
+
         await StorageHelper.saveToken(token!);
 
-        /// SAVE USER
+        /*
+        |--------------------------------------------------------------------------
+        | SAVE USER
+        |--------------------------------------------------------------------------
+        */
+
         await StorageHelper.saveUser(jsonEncode(user));
 
-        debugPrint("TOKEN SAVED: $token");
-        debugPrint("USER SAVED: $user");
+        debugPrint("TOKEN SAVED => $token");
+
+        debugPrint("USER SAVED => $user");
 
         notifyListeners();
 
         return true;
-
       }
 
       return false;
-
-    } catch(e){
-
-      debugPrint("LOGIN ERROR: $e");
+    } catch (e) {
+      debugPrint("LOGIN ERROR => $e");
 
       return false;
-
     }
-
   }
 
   /*
-  -------------------------
-  AUTO LOGIN
-  -------------------------
+  |--------------------------------------------------------------------------
+  | AUTO LOAD USER
+  |--------------------------------------------------------------------------
   */
 
   Future<void> loadUser() async {
+    /*
+    |--------------------------------------------------------------------------
+    | GET TOKEN
+    |--------------------------------------------------------------------------
+    */
 
     token = await StorageHelper.getToken();
 
+    /*
+    |--------------------------------------------------------------------------
+    | GET USER
+    |--------------------------------------------------------------------------
+    */
+
     String? userJson = await StorageHelper.getUser();
 
-    if(userJson != null){
+    /*
+    |--------------------------------------------------------------------------
+    | DECODE USER
+    |--------------------------------------------------------------------------
+    */
+
+    if (userJson != null) {
       user = jsonDecode(userJson);
     }
 
     notifyListeners();
-
   }
 
   /*
-  -------------------------
-  LOGOUT
-  -------------------------
+  |--------------------------------------------------------------------------
+  | LOGOUT
+  |--------------------------------------------------------------------------
   */
 
   Future<void> logout() async {
-
     token = null;
+
     user = null;
 
     await StorageHelper.logout();
 
     notifyListeners();
-
   }
-
 }
