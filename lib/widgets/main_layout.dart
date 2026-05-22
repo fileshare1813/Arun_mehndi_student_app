@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-
 import '../features/home/home_screen.dart';
 import '../features/courses/screens/courses_screen.dart';
 import '../features/learning/learning_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../core/constants/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
   const MainNavigationScreen({super.key, this.initialIndex = 0});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainNavigationScreen> createState() =>
+      _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
@@ -28,9 +29,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Screens list rebuild hoti hai taki HomeScreen ko changeTab pass ho sake
     final screens = [
-      HomeScreen(onSeeAllCourses: () => changeTab(1)), // ✅ callback pass
+      HomeScreen(onSeeAllCourses: () => changeTab(1)),
       const CoursesScreen(),
       const LearningScreen(),
       const ProfileScreen(),
@@ -45,10 +45,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         currentIndex: currentIndex,
         onTap: changeTab,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.red,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
-        elevation: 8,
+        elevation: 12,
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+        ),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),

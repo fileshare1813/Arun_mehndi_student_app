@@ -16,6 +16,7 @@ class FeaturedCourses extends StatefulWidget {
 class _FeaturedCoursesState extends State<FeaturedCourses> {
   List<Course> courses = [];
   bool isLoading = true;
+  bool hasError = false;
 
   @override
   void initState() {
@@ -24,21 +25,28 @@ class _FeaturedCoursesState extends State<FeaturedCourses> {
   }
 
   Future<void> fetchCourses() async {
+    if (!mounted) return;
+    setState(() {
+      isLoading = true;
+      hasError = false;
+    });
     try {
       final token = await StorageHelper.getToken() ?? "";
-      final data = await CourseService.getCourses(
-        token: token,
-        page: 1,
-      );
+      final data = await CourseService.getCourses(token: token, page: 1);
       if (mounted) {
         setState(() {
-          courses = data.take(5).toList(); // ✅ sirf 5 show karo home pe
+          courses = data.take(5).toList();
           isLoading = false;
         });
       }
     } catch (e) {
       debugPrint("FEATURED COURSES ERROR: $e");
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
+      }
     }
   }
 
@@ -51,8 +59,7 @@ class _FeaturedCoursesState extends State<FeaturedCourses> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          // ─── HEADER ───────────────────────────────────
+          // ─── HEADER ──────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -62,16 +69,18 @@ class _FeaturedCoursesState extends State<FeaturedCourses> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
+                  fontFamily: 'Inter',
                 ),
               ),
               GestureDetector(
-                onTap: widget.onSeeAll, // ✅ courses tab pe jaao
+                onTap: widget.onSeeAll,
                 child: const Text(
                   "See All",
                   style: TextStyle(
                     color: Colors.red,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
+                    fontFamily: 'Inter',
                   ),
                 ),
               ),
@@ -81,40 +90,54 @@ class _FeaturedCoursesState extends State<FeaturedCourses> {
           const SizedBox(height: 16),
 
           // ─── COURSE LIST ──────────────────────────────
-          isLoading
-              ? SizedBox(
-            height: 210,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 3,
-              itemBuilder: (_, __) => _shimmerCard(),
-            ),
-          )
-              : courses.isEmpty
-              ? const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 30),
-              child: Text(
-                "No courses available",
-                style: TextStyle(color: Colors.grey),
+          if (isLoading)
+            SizedBox(
+              height: 210,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 3,
+                itemBuilder: (_, __) => _shimmerCard(),
               ),
-            ),
-          )
-              : SizedBox(
-            height: 220,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: courses.length,
-              itemBuilder: (_, i) =>
-                  _FeaturedCourseCard(course: courses[i]),
-            ),
-          ),
+            )
+          else if (hasError)
+            GestureDetector(
+              onTap: fetchCourses,
+              child: Container(
+                height: 80,
+                alignment: Alignment.center,
+                child: const Text(
+                  "Failed to load. Tap to retry.",
+                  style: TextStyle(
+                      color: Colors.red, fontFamily: 'Inter'),
+                ),
+              ),
+            )
+          else if (courses.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 30),
+                  child: Text(
+                    "No courses available",
+                    style: TextStyle(
+                        color: Colors.grey, fontFamily: 'Inter'),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 220,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: courses.length,
+                  itemBuilder: (_, i) =>
+                      _FeaturedCourseCard(course: courses[i]),
+                ),
+              ),
         ],
       ),
     );
   }
 
-  // ─── SHIMMER PLACEHOLDER ──────────────────────────────
   Widget _shimmerCard() {
     return Container(
       width: 160,
@@ -160,13 +183,12 @@ class _FeaturedCourseCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // Thumbnail
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(14)),
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(14)),
                   child: Image.network(
                     "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
                     height: 110,
@@ -201,6 +223,7 @@ class _FeaturedCourseCard extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
                         ),
                       ),
                     ),
@@ -230,8 +253,6 @@ class _FeaturedCourseCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  // Title
                   Text(
                     course.title,
                     maxLines: 2,
@@ -241,18 +262,17 @@ class _FeaturedCourseCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                       height: 1.3,
+                      fontFamily: 'Inter',
                     ),
                   ),
-
                   const SizedBox(height: 6),
-
-                  // Price
                   Text(
                     "₹${course.price}",
                     style: const TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      fontFamily: 'Inter',
                     ),
                   ),
                 ],

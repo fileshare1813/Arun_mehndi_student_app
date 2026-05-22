@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class CategoriesSection extends StatelessWidget {
   final VoidCallback? onSeeAll;
-  final ValueChanged<String>? onCategoryTap; // ✅ NEW: category tap callback
+  final ValueChanged<String>? onCategoryTap;
 
   const CategoriesSection({
     super.key,
@@ -13,16 +13,45 @@ class CategoriesSection extends StatelessWidget {
   });
 
   Future<List<CategoryModel>> fetchCategories() async {
-    const String url = "https://api.aktuhub.in/api/categories.php";
+    // Correct endpoint — no .php extension, uses the router in index.php
+    const String url = "https://api.aktuhub.in/api/categories";
 
-    final response = await http.get(Uri.parse(url));
+    try {
+      final response = await http
+          .get(
+        Uri.parse(url),
+        headers: {"Accept": "application/json"},
+      )
+          .timeout(const Duration(seconds: 15));
 
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      List data = jsonData["data"];
-      return data.map((e) => CategoryModel.fromJson(e)).toList();
-    } else {
-      throw Exception("Failed to load categories");
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+
+        // API returns { success: true, data: [...] }
+        final List<dynamic> data;
+        if (jsonData is Map && jsonData['data'] is List) {
+          data = jsonData['data'] as List;
+        } else if (jsonData is List) {
+          data = jsonData;
+        } else {
+          return [];
+        }
+
+        return data
+            .map((e) {
+          try {
+            return CategoryModel.fromJson(e as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+            .whereType<CategoryModel>()
+            .toList();
+      } else {
+        throw Exception("Failed to load categories: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("Categories fetch error: $e");
     }
   }
 
@@ -33,24 +62,15 @@ class CategoriesSection extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
-            padding: EdgeInsets.all(30),
+            padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (snapshot.hasError) {
-          return const Padding(
-            padding: EdgeInsets.all(20),
-            child: Center(
-              child: Text(
-                "Failed to load categories",
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          );
-        }
-
-        final categories = snapshot.data ?? [];
+        // On error or empty — show static fallback categories
+        final categories = (snapshot.hasError || (snapshot.data?.isEmpty ?? true))
+            ? _fallbackCategories()
+            : snapshot.data!;
 
         return Padding(
           padding: const EdgeInsets.all(16),
@@ -79,9 +99,7 @@ class CategoriesSection extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 18),
-
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -90,7 +108,6 @@ class CategoriesSection extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 20),
                       child: CategoryItem(
                         category: category,
-                        // ✅ category tap se home search trigger hoga
                         onTap: onCategoryTap != null
                             ? () => onCategoryTap!(category.name)
                             : null,
@@ -105,11 +122,20 @@ class CategoriesSection extends StatelessWidget {
       },
     );
   }
+
+  List<CategoryModel> _fallbackCategories() {
+    return [
+      CategoryModel(id: "1", name: "Mehndi", description: ""),
+      CategoryModel(id: "2", name: "Beauty", description: ""),
+      CategoryModel(id: "3", name: "Makeup", description: ""),
+      CategoryModel(id: "4", name: "Nail Art", description: ""),
+    ];
+  }
 }
 
 class CategoryItem extends StatelessWidget {
   final CategoryModel category;
-  final VoidCallback? onTap; // ✅ NEW
+  final VoidCallback? onTap;
 
   const CategoryItem({
     super.key,
@@ -146,9 +172,7 @@ class CategoryItem extends StatelessWidget {
               style: const TextStyle(fontSize: 26),
             ),
           ),
-
           const SizedBox(height: 8),
-
           SizedBox(
             width: 70,
             child: Text(
@@ -183,10 +207,10 @@ class CategoryModel {
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
-      id: json["id"].toString(),
-      name: json["name"] ?? "",
-      icon: json["icon"],
-      description: json["description"] ?? "",
+      id: json["id"]?.toString() ?? "",
+      name: json["name"]?.toString() ?? "",
+      icon: json["icon"]?.toString(),
+      description: json["description"]?.toString() ?? "",
     );
   }
 }

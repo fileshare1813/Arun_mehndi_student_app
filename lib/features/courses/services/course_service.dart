@@ -17,53 +17,91 @@ class CourseService {
       "page": page.toString(),
     };
 
-    if (category != null && category.isNotEmpty) {
-      queryParams["category"] = category;
+    // Backend CourseController checks $_GET['category'] as category name string
+    if (category != null && category.trim().isNotEmpty) {
+      queryParams["category"] = category.trim();
     }
 
-    if (level != null && level.isNotEmpty) {
-      queryParams["level"] = _mapLevel(level);
+    // Backend searchCourses uses level as-is — API stores Basic/Medium/Advanced
+    if (level != null && level.trim().isNotEmpty) {
+      queryParams["level"] = _mapLevel(level.trim());
     }
 
-    if (search != null && search.isNotEmpty) {
-      queryParams["search"] = search;
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams["search"] = search.trim();
     }
 
     final uri =
     Uri.parse("$baseUrl/courses").replace(queryParameters: queryParams);
 
-    debugPrint("🌐 API CALL: $uri");
+    debugPrint("🌐 CourseService GET: $uri");
 
-    final response = await http.get(
-      uri,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Accept": "application/json",
-      },
-    );
+    try {
+      final response = await http
+          .get(
+        uri,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      )
+          .timeout(const Duration(seconds: 20));
 
-    debugPrint("📡 STATUS: ${response.statusCode}");
+      debugPrint("📡 STATUS: ${response.statusCode}");
+      debugPrint("📦 BODY: ${response.body.substring(0, response.body.length.clamp(0, 300))}");
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
-      final list = decoded['data'] as List? ?? [];
-      return list.map((e) => Course.fromJson(e)).toList();
-    } else {
-      throw Exception("API ERROR: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        // API wraps in { success, data: [...] }
+        final List<dynamic> list;
+        if (decoded is Map && decoded['data'] is List) {
+          list = decoded['data'] as List;
+        } else if (decoded is List) {
+          list = decoded;
+        } else {
+          debugPrint("❌ Unexpected API shape: ${decoded.runtimeType}");
+          return [];
+        }
+
+        final courses = list
+            .map((e) {
+          try {
+            return Course.fromJson(e as Map<String, dynamic>);
+          } catch (err) {
+            debugPrint("⚠️ Course.fromJson error: $err — item: $e");
+            return null;
+          }
+        })
+            .whereType<Course>()
+            .toList();
+
+        debugPrint("✅ Parsed ${courses.length} courses");
+        return courses;
+      } else {
+        debugPrint("❌ API ERROR: ${response.statusCode} — ${response.body}");
+        throw Exception("API ERROR: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("❌ CourseService exception: $e");
+      rethrow;
     }
   }
 
-  // ✅ API mein level values: "Advanced", "Medium", "Basic" (capital)
+  /// Maps UI filter labels → API level values stored in DB (Basic/Medium/Advanced)
   static String _mapLevel(String level) {
-    switch (level) {
-      case "Beginner":
+    switch (level.toLowerCase()) {
+      case "beginner":
+      case "basic":
         return "Basic";
-      case "Intermediate":
+      case "intermediate":
+      case "medium":
         return "Medium";
-      case "Pro":
+      case "pro":
+      case "advanced":
         return "Advanced";
       default:
-      // Agar already "Basic/Medium/Advanced" aaye toh direct pass karo
+      // Return as-is if already correct casing
         return level;
     }
   }

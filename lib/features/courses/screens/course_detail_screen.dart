@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'course_preview_screen.dart';
 import '../../courses/models/course_model.dart';
-// import '../../instructor/screens/instructor_profile_screen.dart';
 import 'package:mehndi_student_app/features/instructor/screens/instructor_profile_screen.dart';
+import 'package:mehndi_student_app/features/courses/widgets/course_reviews_tab.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/helpers/storage_helper.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final Course course;
-
   const CourseDetailScreen({super.key, required this.course});
 
   @override
@@ -18,52 +21,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isWishlisted = false;
-  int _selectedTab = 1; // default: Syllabus
+  int _selectedTab = 1;
 
-  // ─── Dummy syllabus data (replace with API data) ──────
-  final List<Map<String, dynamic>> _modules = [
-    {
-      "title": "Basic Strokes & Elements",
-      "lessons": 4,
-      "duration": "1h 15m",
-      "expanded": true,
-      "items": [
-        {"title": "Introduction to Cones", "duration": "12:30", "free": true},
-        {"title": "Lines, Dots & Teardrops", "duration": "25:10", "free": false},
-        {"title": "Vines & Leaves", "duration": "18:45", "free": false},
-        {"title": "Spiral Patterns", "duration": "19:00", "free": false},
-      ],
-    },
-    {
-      "title": "Intricate Patterns & Fillers",
-      "lessons": 6,
-      "duration": "2h 45m",
-      "expanded": false,
-      "items": [],
-    },
-    {
-      "title": "Bridal Figures & Portraits",
-      "lessons": 8,
-      "duration": "5h 20m",
-      "expanded": false,
-      "items": [],
-    },
-    {
-      "title": "Symmetry & Layout Planning",
-      "lessons": 6,
-      "duration": "3h 10m",
-      "expanded": false,
-      "items": [],
-    },
-  ];
+  // Enroll state
+  bool _enrolling = false;
+  bool _isEnrolled = false;
+
+  // Course structure (modules/lessons from API)
+  List<Map<String, dynamic>> _modules = [];
+  bool _loadingModules = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController =
+        TabController(length: 3, vsync: this, initialIndex: 1);
     _tabController.addListener(() {
       setState(() => _selectedTab = _tabController.index);
     });
+    _checkEnrollment();
+    _fetchCourseStructure();
   }
 
   @override
@@ -72,10 +49,130 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     super.dispose();
   }
 
+  // ── Check if already enrolled ─────────────────────────
+  Future<void> _checkEnrollment() async {
+    try {
+      final token = await StorageHelper.getToken() ?? '';
+      final res = await http.get(
+        Uri.parse(
+            "https://api.aktuhub.in/api/enroll?action=check-access&course_id=${widget.course.id}"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        final data = body['data'];
+        if (mounted) {
+          setState(() {
+            _isEnrolled = data['has_access'] == true;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ── Fetch course structure ─────────────────────────────
+  Future<void> _fetchCourseStructure() async {
+    try {
+      final token = await StorageHelper.getToken() ?? '';
+      final res = await http.get(
+        Uri.parse(
+            "https://api.aktuhub.in/api/course-detail?id=${widget.course.id}"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        final data = body['data'];
+        final List<dynamic> rawModules = data['modules'] ?? [];
+
+        if (mounted) {
+          setState(() {
+            _modules = rawModules.map((m) {
+              return {
+                "title": m['title']?.toString() ?? '',
+                "expanded": false,
+                "items": (m['lessons'] as List? ?? []).map((l) {
+                  return {
+                    "title": l['title']?.toString() ?? '',
+                    "duration": l['duration']?.toString() ?? '',
+                    "free": (l['is_preview'] == 1 || l['is_preview'] == true),
+                  };
+                }).toList(),
+              };
+            }).toList();
+            _loadingModules = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _loadingModules = false);
+      }
+    } catch (e) {
+      debugPrint("COURSE STRUCTURE ERROR: $e");
+      if (mounted) setState(() => _loadingModules = false);
+    }
+  }
+
+  // ── Enroll ─────────────────────────────────────────────
+  Future<void> _enroll() async {
+    if (_isEnrolled) return;
+    setState(() => _enrolling = true);
+    try {
+      final token = await StorageHelper.getToken() ?? '';
+      final res = await http.post(
+        Uri.parse(
+            "https://api.aktuhub.in/api/enroll?action=enroll"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: jsonEncode({"course_id": widget.course.id}),
+      ).timeout(const Duration(seconds: 15));
+
+      final body = jsonDecode(res.body);
+      if (mounted) {
+        if (body['success'] == true ||
+            (body['message']?.toString().toLowerCase().contains('success') ?? false)) {
+          setState(() => _isEnrolled = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Enrolled successfully! Start learning."),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(body['message'] ?? "Enrollment failed"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Server error. Please try again."),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
+    if (mounted) setState(() => _enrolling = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final course = widget.course;
-    final hasOldPrice = course.oldPrice.isNotEmpty && course.oldPrice != "0";
+    final hasOldPrice =
+        course.oldPrice.isNotEmpty && course.oldPrice != "0";
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -83,13 +180,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         children: [
           CustomScrollView(
             slivers: [
+              SliverToBoxAdapter(child: _buildVideoHeader(course)),
 
-              // ─── VIDEO THUMBNAIL ─────────────────────
-              SliverToBoxAdapter(
-                child: _buildVideoHeader(course),
-              ),
-
-              // ─── COURSE INFO ─────────────────────────
               SliverToBoxAdapter(
                 child: Container(
                   color: Colors.white,
@@ -97,11 +189,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      // Badges row
                       Row(
                         children: [
-                          _badge("Best Seller", const Color(0xFFD4AF37),
+                          _badge("Best Seller", AppColors.gold,
                               const Color(0xFFFFF8E1)),
                           const SizedBox(width: 8),
                           if (course.level.isNotEmpty)
@@ -110,12 +200,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                               Colors.black87,
                               Colors.grey.shade100,
                             ),
+                          if (_isEnrolled) ...[
+                            const SizedBox(width: 8),
+                            _badge("Enrolled", Colors.green,
+                                Colors.green.shade50),
+                          ],
                         ],
                       ),
-
                       const SizedBox(height: 12),
-
-                      // Title
                       Text(
                         course.title,
                         style: const TextStyle(
@@ -126,31 +218,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           fontFamily: 'PlayfairDisplay',
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
-                      // Rating + Students
                       Row(
                         children: [
                           const Icon(Icons.star,
-                              color: Color(0xFFD4AF37), size: 18),
+                              color: AppColors.gold, size: 18),
                           const SizedBox(width: 4),
                           Text(
                             course.rating > 0
                                 ? course.rating.toStringAsFixed(1)
                                 : "4.8",
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFF1C1C1E),
-                            ),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF1C1C1E)),
                           ),
                           Text(
                             " (${course.totalReviews > 0 ? course.totalReviews : "1.2k"})",
                             style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 13,
-                            ),
+                                color: Colors.grey.shade500,
+                                fontSize: 13),
                           ),
                           const SizedBox(width: 16),
                           Icon(Icons.people_outline,
@@ -159,16 +246,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           Text(
                             "${course.totalStudents > 0 ? course.totalStudents : "5.4k"} Enrolled",
                             style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 13,
-                            ),
+                                color: Colors.grey.shade500,
+                                fontSize: 13),
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Price row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -177,7 +260,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             style: const TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFD4AF37),
+                              color: AppColors.gold,
                               fontFamily: 'PlayfairDisplay',
                             ),
                           ),
@@ -202,36 +285,33 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                               child: Text(
                                 "50% OFF",
                                 style: TextStyle(
-                                  color: Colors.green.shade700,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    color: Colors.green.shade700,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ],
                       ),
-
                       const SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
 
-              // ─── TABS ─────────────────────────────────
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarDelegate(
                   TabBar(
                     controller: _tabController,
-                    labelColor: const Color(0xFFD4AF37),
+                    labelColor: AppColors.gold,
                     unselectedLabelColor: Colors.grey.shade500,
-                    indicatorColor: const Color(0xFFD4AF37),
+                    indicatorColor: AppColors.gold,
                     indicatorWeight: 2,
                     labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontFamily: 'Inter'),
                     tabs: const [
                       Tab(text: "About"),
                       Tab(text: "Syllabus"),
@@ -241,7 +321,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 ),
               ),
 
-              // ─── TAB CONTENT ─────────────────────────
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
@@ -249,18 +328,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       ? _buildAboutTab(course)
                       : _selectedTab == 1
                       ? _buildSyllabusTab()
-                      : _buildReviewsTab(),
+                      : CourseReviewsTab(courseId: course.id),
                 ),
               ),
 
-              // Bottom padding for enroll button
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 100),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
 
-          // ─── STICKY ENROLL BUTTON ─────────────────────
           Positioned(
             bottom: 0,
             left: 0,
@@ -272,11 +347,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ─── VIDEO HEADER ──────────────────────────────────────
+  // ── VIDEO HEADER ───────────────────────────────────────
   Widget _buildVideoHeader(Course course) {
     return Stack(
       children: [
-        // Thumbnail
         AspectRatio(
           aspectRatio: 16 / 9,
           child: Image.network(
@@ -285,14 +359,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             errorBuilder: (_, __, ___) => Container(
               color: Colors.grey.shade200,
               child: const Center(
-                child: Icon(Icons.image_not_supported,
-                    color: Colors.black26, size: 40),
-              ),
+                  child: Icon(Icons.image_not_supported,
+                      color: Colors.black26, size: 40)),
             ),
           ),
         ),
-
-        // Gradient overlay
         Positioned.fill(
           child: Container(
             decoration: const BoxDecoration(
@@ -308,19 +379,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
           ),
         ),
-
-        // Top bar: back + share + wishlist
         Positioned(
           top: 0,
           left: 0,
           right: 0,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  _iconBtn(Icons.arrow_back, () => Navigator.pop(context)),
+                  _iconBtn(Icons.arrow_back,
+                          () => Navigator.pop(context)),
                   const Spacer(),
                   _iconBtn(Icons.share_outlined, () {}),
                   const SizedBox(width: 8),
@@ -328,7 +398,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     _isWishlisted
                         ? Icons.favorite
                         : Icons.favorite_border,
-                        () => setState(() => _isWishlisted = !_isWishlisted),
+                        () => setState(
+                            () => _isWishlisted = !_isWishlisted),
                     color: _isWishlisted ? Colors.red : Colors.white,
                   ),
                 ],
@@ -336,16 +407,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
           ),
         ),
-
-        // Play button
         Positioned.fill(
           child: Center(
             child: GestureDetector(
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CoursePreviewScreen(course: course),
-                ),
+                    builder: (_) =>
+                        CoursePreviewScreen(course: course)),
               ),
               child: Container(
                 width: 60,
@@ -354,7 +423,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: Colors.white.withOpacity(0.3), width: 1.5),
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1.5),
                 ),
                 child: const Icon(Icons.play_arrow,
                     color: Colors.white, size: 34),
@@ -362,13 +432,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
           ),
         ),
-
-        // Duration badge
         Positioned(
           bottom: 10,
           right: 12,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.7),
               borderRadius: BorderRadius.circular(6),
@@ -386,7 +455,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ─── ABOUT TAB ─────────────────────────────────────────
+  // ── ABOUT TAB ──────────────────────────────────────────
   Widget _buildAboutTab(Course course) {
     return Container(
       color: Colors.white,
@@ -394,43 +463,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "About this course",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'PlayfairDisplay',
-            ),
-          ),
+          const Text("About this course",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'PlayfairDisplay')),
           const SizedBox(height: 10),
           Text(
             course.description.isNotEmpty
                 ? course.description
-                : "Join Arun's signature masterclass and transform your hobby into a professional career. From basic strokes to complex bridal layouts.",
+                : "Join Arun's signature masterclass and transform your hobby into a professional career.",
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-              height: 1.6,
-            ),
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.6,
+                fontFamily: 'Inter'),
           ),
-
           const SizedBox(height: 24),
-
-          // What you'll learn
-          const Text(
-            "What you will learn",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'PlayfairDisplay',
-            ),
-          ),
+          const Text("What you will learn",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'PlayfairDisplay')),
           const SizedBox(height: 12),
-          ..._learningPoints.map((point) => _learningItem(point)),
-
+          ..._learningPoints.map((p) => _learningItem(p)),
           const SizedBox(height: 24),
-
-          // Instructor
           _buildInstructorCard(course),
         ],
       ),
@@ -443,21 +500,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle, color: Color(0xFFD4AF37), size: 18),
+          const Icon(Icons.check_circle,
+              color: AppColors.gold, size: 18),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14, height: 1.4),
-            ),
-          ),
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.4,
+                      fontFamily: 'Inter'))),
         ],
       ),
     );
   }
 
   Widget _buildInstructorCard(Course course) {
-    return GestureDetector(                          // ← NAYA: tap wrapper
+    return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
         Navigator.push(
@@ -470,13 +528,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     : 'Arun Sir',
                 title: 'Master Artist',
                 imageUrl:
-                'https://ui-avatars.com/api/?name=${course.instructor}&background=D4AF37&color=fff',
+                'https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.instructor)}&background=D4AF37&color=fff',
                 bio:
-                'Founder of Arun Mehndi Studio, I have dedicated my career to preserving and innovating the art of henna. Having trained thousands of students worldwide.',
+                'Founder of Arun Mehndi Studio, dedicated to preserving and innovating the art of henna.',
                 totalCourses: 24,
                 totalStudents: '12K+',
                 rating: 4.9,
-                courses: const [],   // apna API data yahan dena baad mein
+                courses: const [],
               ),
             ),
           ),
@@ -493,9 +551,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: const Color(0xFFD4AF37).withOpacity(0.2),
+              backgroundColor: AppColors.gold.withOpacity(0.2),
               backgroundImage: NetworkImage(
-                "https://ui-avatars.com/api/?name=${course.instructor.isNotEmpty ? course.instructor : 'Arun Kumar'}&background=D4AF37&color=fff",
+                "https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.instructor.isNotEmpty ? course.instructor : 'Arun Kumar')}&background=D4AF37&color=fff",
               ),
             ),
             const SizedBox(width: 14),
@@ -503,45 +561,48 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Instructor",
-                    style: TextStyle(
-                      color: Color(0xFFD4AF37),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+                  const Text("Instructor",
+                      style: TextStyle(
+                          color: AppColors.gold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                          fontFamily: 'Inter')),
                   Text(
-                    course.instructor.isNotEmpty
-                        ? course.instructor
-                        : "Arun Kumar",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  Text(
-                    "Professional Mehndi Artist since 2012",
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 12,
-                    ),
-                  ),
+                      course.instructor.isNotEmpty
+                          ? course.instructor
+                          : "Arun Kumar",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          fontFamily: 'Inter')),
+                  Text("Professional Mehndi Artist since 2012",
+                      style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 12,
+                          fontFamily: 'Inter')),
                 ],
               ),
             ),
-            // ← NAYA: arrow icon
             const Icon(Icons.arrow_forward_ios,
-                size: 14, color: Color(0xFFD4AF37)),
+                size: 14, color: AppColors.gold),
           ],
         ),
       ),
     );
   }
 
-  // ─── SYLLABUS TAB ──────────────────────────────────────
+  // ── SYLLABUS TAB ───────────────────────────────────────
   Widget _buildSyllabusTab() {
+    if (_loadingModules) {
+      return const Center(
+          child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator()));
+    }
+
+    final modules = _modules.isNotEmpty ? _modules : _fallbackModules;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(20),
@@ -551,32 +612,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Course Modules",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'PlayfairDisplay',
-                ),
-              ),
+              const Text("Course Modules",
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'PlayfairDisplay')),
               Text(
-                "24 Lessons • 12h 30m",
+                "${modules.length} modules",
                 style: TextStyle(
-                    color: Colors.grey.shade500, fontSize: 12),
+                    color: Colors.grey.shade500,
+                    fontSize: 12,
+                    fontFamily: 'Inter'),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          ...List.generate(_modules.length, (index) {
-            return _buildModuleCard(index);
-          }),
+          ...List.generate(
+              modules.length, (i) => _buildModuleCard(i, modules)),
         ],
       ),
     );
   }
 
-  Widget _buildModuleCard(int index) {
-    final module = _modules[index];
+  Widget _buildModuleCard(
+      int index, List<Map<String, dynamic>> modules) {
+    final module = modules[index];
     final isExpanded = module["expanded"] as bool;
     final items = module["items"] as List;
 
@@ -596,38 +656,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
       child: Column(
         children: [
-          // Module header
           GestureDetector(
-            onTap: () {
-              setState(() {
-                _modules[index]["expanded"] = !isExpanded;
-              });
-            },
+            onTap: () => setState(
+                    () => modules[index]["expanded"] = !isExpanded),
             child: Container(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Number circle
                   Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       color: isExpanded
-                          ? const Color(0xFFD4AF37).withOpacity(0.15)
+                          ? AppColors.gold.withOpacity(0.15)
                           : Colors.grey.shade100,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Text(
-                        "${index + 1}",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isExpanded
-                              ? const Color(0xFFD4AF37)
-                              : Colors.grey.shade600,
-                        ),
-                      ),
+                      child: Text("${index + 1}",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              fontFamily: 'Inter',
+                              color: isExpanded
+                                  ? AppColors.gold
+                                  : Colors.grey.shade600)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -635,21 +688,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          module["title"],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "${module["lessons"]} Lessons • ${module["duration"]}",
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text(module["title"],
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                fontFamily: 'Inter')),
+                        Text("${items.length} Lessons",
+                            style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 12,
+                                fontFamily: 'Inter')),
                       ],
                     ),
                   ),
@@ -663,14 +711,65 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               ),
             ),
           ),
-
-          // Lesson items
           if (isExpanded && items.isNotEmpty) ...[
             Divider(color: Colors.grey.shade100, height: 1),
             ...List.generate(items.length, (i) {
               final item = items[i] as Map;
-              final isFree = item["free"] as bool;
-              return _buildLessonItem(item, isFree);
+              final isFree = item["free"] as bool? ?? false;
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(Icons.play_circle_outline,
+                        color: isFree
+                            ? AppColors.gold
+                            : Colors.grey.shade400,
+                        size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item["title"]?.toString() ?? '',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontFamily: 'Inter',
+                                  color: isFree
+                                      ? const Color(0xFF1C1C1E)
+                                      : Colors.grey.shade500)),
+                          if ((item["duration"]?.toString() ?? '')
+                              .isNotEmpty)
+                            Text(item["duration"].toString(),
+                                style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 11,
+                                    fontFamily: 'Inter')),
+                        ],
+                      ),
+                    ),
+                    if (isFree)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text("FREE",
+                            style: TextStyle(
+                                color: AppColors.gold,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Inter')),
+                      )
+                    else
+                      Icon(Icons.lock_outline,
+                          color: Colors.grey.shade300, size: 16),
+                  ],
+                ),
+              );
             }),
           ],
         ],
@@ -678,232 +777,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  Widget _buildLessonItem(Map item, bool isFree) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Icon(
-            Icons.play_circle_outline,
-            color: isFree
-                ? const Color(0xFFD4AF37)
-                : Colors.grey.shade400,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item["title"],
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isFree
-                        ? const Color(0xFF1C1C1E)
-                        : Colors.grey.shade500,
-                  ),
-                ),
-                Text(
-                  item["duration"],
-                  style: TextStyle(
-                      color: Colors.grey.shade400, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          if (isFree)
-            Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD4AF37).withOpacity(0.12),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                "FREE",
-                style: TextStyle(
-                  color: Color(0xFFD4AF37),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-          else
-            Icon(Icons.lock_outline,
-                color: Colors.grey.shade300, size: 16),
-        ],
-      ),
-    );
-  }
-
-  // ─── REVIEWS TAB ───────────────────────────────────────
-  Widget _buildReviewsTab() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Rating summary
-          Row(
-            children: [
-              Column(
-                children: [
-                  const Text(
-                    "4.8",
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'PlayfairDisplay',
-                      color: Color(0xFFD4AF37),
-                    ),
-                  ),
-                  Row(
-                    children: List.generate(
-                      5,
-                          (i) => Icon(
-                        i < 4 ? Icons.star : Icons.star_half,
-                        color: const Color(0xFFD4AF37),
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "1.2k reviews",
-                    style: TextStyle(
-                        color: Colors.grey.shade400, fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  children: [
-                    _ratingBar(5, 0.72),
-                    _ratingBar(4, 0.18),
-                    _ratingBar(3, 0.07),
-                    _ratingBar(2, 0.02),
-                    _ratingBar(1, 0.01),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-          Divider(color: Colors.grey.shade100),
-          const SizedBox(height: 16),
-
-          // Sample reviews
-          ...[
-            {
-              "name": "Priya S.",
-              "rating": 5,
-              "time": "2 weeks ago",
-              "comment":
-              "Excellent course! Arun sir explains everything so clearly. My designs have improved a lot."
-            },
-            {
-              "name": "Meera K.",
-              "rating": 5,
-              "time": "1 month ago",
-              "comment":
-              "Best mehndi course I've ever taken. The bridal module is especially detailed and helpful."
-            },
-          ].map((r) => _reviewCard(r)).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _ratingBar(int star, double fraction) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Text("$star",
-              style:
-              TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-          const SizedBox(width: 6),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: fraction,
-                backgroundColor: Colors.grey.shade100,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFFD4AF37)),
-                minHeight: 6,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _reviewCard(Map r) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor:
-                const Color(0xFFD4AF37).withOpacity(0.15),
-                child: Text(
-                  (r["name"] as String)[0],
-                  style: const TextStyle(
-                    color: Color(0xFFD4AF37),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r["name"] as String,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14)),
-                    Text(r["time"] as String,
-                        style: TextStyle(
-                            color: Colors.grey.shade400, fontSize: 11)),
-                  ],
-                ),
-              ),
-              Row(
-                children: List.generate(
-                  r["rating"] as int,
-                      (_) => const Icon(Icons.star,
-                      color: Color(0xFFD4AF37), size: 14),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            r["comment"] as String,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 13,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Divider(color: Colors.grey.shade100),
-        ],
-      ),
-    );
-  }
-
-  // ─── ENROLL BAR ────────────────────────────────────────
+  // ── ENROLL BAR ─────────────────────────────────────────
   Widget _buildEnrollBar(Course course, bool hasOldPrice) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -919,66 +793,75 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
       child: Row(
         children: [
-          // Price
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (hasOldPrice)
-                Text(
-                  "₹${course.oldPrice}",
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 12,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
-              Text(
-                "₹${course.price}",
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1C1C1E),
-                  fontFamily: 'PlayfairDisplay',
-                ),
-              ),
+                Text("₹${course.oldPrice}",
+                    style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 12,
+                        decoration: TextDecoration.lineThrough,
+                        fontFamily: 'Inter')),
+              Text("₹${course.price}",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1C1C1E),
+                    fontFamily: 'PlayfairDisplay',
+                  )),
             ],
           ),
           const SizedBox(width: 16),
-          // Button
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                // TODO: payment/enroll logic
-              },
+              onTap: _isEnrolled || _enrolling ? null : _enroll,
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37),
+                  color: _isEnrolled ? Colors.green : AppColors.gold,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFD4AF37).withOpacity(0.35),
+                      color: (_isEnrolled ? Colors.green : AppColors.gold)
+                          .withOpacity(0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Enroll Now",
-                      style: TextStyle(
+                child: Center(
+                  child: _enrolling
+                      ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isEnrolled
+                            ? Icons.check_circle
+                            : Icons.arrow_forward,
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        size: 20,
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        _isEnrolled
+                            ? "Already Enrolled"
+                            : "Enroll Now",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -988,7 +871,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ─── HELPERS ───────────────────────────────────────────
+  // ── HELPERS ────────────────────────────────────────────
   Widget _badge(String text, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -997,19 +880,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: textColor.withOpacity(0.2)),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
-      ),
+      child: Text(text,
+          style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              fontFamily: 'Inter')),
     );
   }
 
-  Widget _iconBtn(IconData icon, VoidCallback onTap, {Color color = Colors.white}) {
+  Widget _iconBtn(IconData icon, VoidCallback onTap,
+      {Color color = Colors.white}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1018,7 +900,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.4),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border:
+          Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
@@ -1036,29 +919,41 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     "Modern Fusion — Arabic & Rajasthani patterns",
     "Business of Mehndi Art — pricing & bookings",
   ];
+
+  // Fallback modules if API fails
+  final List<Map<String, dynamic>> _fallbackModules = [
+    {
+      "title": "Basic Strokes & Elements",
+      "expanded": false,
+      "items": [
+        {"title": "Introduction to Cones", "duration": "12:30", "free": true},
+        {"title": "Lines, Dots & Teardrops", "duration": "25:10", "free": false},
+      ],
+    },
+    {
+      "title": "Intricate Patterns & Fillers",
+      "expanded": false,
+      "items": [],
+    },
+  ];
 }
 
-// ─── TAB BAR DELEGATE ──────────────────────────────────────
+// ─── TAB BAR DELEGATE ─────────────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   _TabBarDelegate(this.tabBar);
 
   @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      child: tabBar,
-    );
+  Widget build(BuildContext context, double shrinkOffset,
+      bool overlapsContent) {
+    return Container(color: Colors.white, child: tabBar);
   }
 
   @override
   double get maxExtent => tabBar.preferredSize.height;
-
   @override
   double get minExtent => tabBar.preferredSize.height;
-
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate old) =>
       false;
 }

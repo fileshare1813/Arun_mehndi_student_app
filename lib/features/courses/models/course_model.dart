@@ -32,21 +32,35 @@ class Course {
   });
 
   factory Course.fromJson(Map<String, dynamic> json) {
+    // API returns instructor_name (from JOIN with users table)
+    // Also handle old_price / original_price variants
     return Course(
       id: int.tryParse(json['id'].toString()) ?? 0,
       title: json['title'] ?? "",
       thumbnail: json['thumbnail'] ?? "",
-      price: json['price'].toString(),
-      oldPrice: json['old_price']?.toString() ?? "",
+      price: json['price']?.toString() ?? "0",
+      oldPrice: json['old_price']?.toString() ??
+          json['original_price']?.toString() ?? "",
+      // API JOIN returns instructor_name from users table
       level: json['level'] ?? "",
       category: json['category'] ?? "",
-      description: json['description'] ?? "",
-      rating: double.tryParse(json['rating']?.toString() ?? "0") ?? 0.0,
-      totalReviews: int.tryParse(json['total_reviews']?.toString() ?? "0") ?? 0,
-      totalStudents: int.tryParse(json['total_students']?.toString() ?? "0") ?? 0,
-      instructor: json['instructor'] ?? "",
+      description: json['description'] ??
+          json['short_description'] ?? "",
+      rating: double.tryParse(
+          json['average_rating']?.toString() ??
+              json['rating']?.toString() ?? "0") ??
+          0.0,
+      totalReviews:
+      int.tryParse(json['total_reviews']?.toString() ?? "0") ?? 0,
+      totalStudents:
+      int.tryParse(json['total_students']?.toString() ?? "0") ?? 0,
+      // API returns instructor_name from the JOIN — fall back to instructor field
+      instructor: json['instructor_name']?.toString().trim().isNotEmpty == true
+          ? json['instructor_name']
+          : json['instructor']?.toString() ?? "",
       duration: json['duration'] ?? "",
-      totalLessons: int.tryParse(json['total_lessons']?.toString() ?? "0") ?? 0,
+      totalLessons:
+      int.tryParse(json['total_lessons']?.toString() ?? "0") ?? 0,
     );
   }
 }
