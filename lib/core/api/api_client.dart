@@ -25,7 +25,7 @@ class ApiClient {
         if(token != null) "Authorization": "Bearer $token"
       };
 
-      final url = ApiEndpoints.baseUrl + endpoint;
+      final url = endpoint;
 
       print("GET URL: $url");
 
@@ -67,7 +67,7 @@ class ApiClient {
         if(token != null) "Authorization": "Bearer $token"
       };
 
-      final url = ApiEndpoints.baseUrl + endpoint;
+      final url = endpoint;
 
       print("POST URL: $url");
       print("POST DATA: $data");

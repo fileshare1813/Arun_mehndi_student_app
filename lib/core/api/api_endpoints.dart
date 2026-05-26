@@ -6,7 +6,26 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String baseUrl = "https://api.aktuhub.in/api";
+  static const String baseUrl =
+      "https://api.aktuhub.in/api";
+
+  /*
+  -------------------------
+  IMAGE URLS
+  -------------------------
+  */
+
+  static const String courseThumbnail =
+      "$baseUrl/uploads/course_thumbnails/";
+
+  static const String profileImage =
+      "$baseUrl/uploads/profile_images/";
+
+  static const String certificate =
+      "$baseUrl/uploads/certificates/";
+
+  static const String commonImages =
+      "$baseUrl/uploads/images/";
 
   /*
   -------------------------
@@ -14,9 +33,23 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String login = "/auth/login";
-  static const String register = "/auth/register";
-  static const String verifyOtp = "/auth/verify-otp";
+  static const String login =
+      "$baseUrl/auth/login";
+
+  static const String register =
+      "$baseUrl/auth/register";
+
+  static const String verifyOtp =
+      "$baseUrl/auth/verify-otp";
+
+  static const String forgotPassword =
+      "$baseUrl/auth/forgot-password";
+
+  static const String verifyResetOtp =
+      "$baseUrl/auth/verify-reset-otp";
+
+  static const String resetPassword =
+      "$baseUrl/auth/reset-password";
 
   /*
   -------------------------
@@ -24,8 +57,11 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String courses = "/courses";
-  static const String courseDetail = "/course-detail";
+  static const String courses =
+      "$baseUrl/courses";
+
+  static const String courseDetail =
+      "$baseUrl/course-detail";
 
   /*
   -------------------------
@@ -33,7 +69,8 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String lessonVideo = "/lesson-video";
+  static const String lessonVideo =
+      "$baseUrl/lesson-video";
 
   /*
   -------------------------
@@ -41,8 +78,11 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String dashboard = "/student-dashboard";
-  static const String progress = "/progress";
+  static const String dashboard =
+      "$baseUrl/student-dashboard";
+
+  static const String progress =
+      "$baseUrl/progress";
 
   /*
   -------------------------
@@ -50,15 +90,8 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String reviews = "/reviews";
-
-  /*
-  -------------------------
-  CERTIFICATE
-  -------------------------
-  */
-
-  static const String certificate = "/certificate";
+  static const String reviews =
+      "$baseUrl/reviews";
 
   /*
   -------------------------
@@ -66,7 +99,8 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String notifications = "/notifications";
+  static const String notifications =
+      "$baseUrl/notifications";
 
   /*
   -------------------------
@@ -74,10 +108,6 @@ class ApiEndpoints {
   -------------------------
   */
 
-  static const String live = "/live";
-
-  static const forgotPassword = "/auth/forgot-password";
-  static const verifyResetOtp = "/auth/verify-reset-otp";
-  static const resetPassword = "/auth/reset-password";
-
+  static const String live =
+      "$baseUrl/live";
 }

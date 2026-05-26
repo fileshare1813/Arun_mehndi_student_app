@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course_model.dart';
 import '../../courses/screens/course_detail_screen.dart';
+import '../../../core/api/api_endpoints.dart';
 
 class CourseCard extends StatelessWidget {
   final Course course;
@@ -40,7 +41,8 @@ class CourseCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16)),
                   child: Image.network(
-                    "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
+                    "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
+                    // "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
                     height: 170,
                     width: double.infinity,
                     fit: BoxFit.cover,
