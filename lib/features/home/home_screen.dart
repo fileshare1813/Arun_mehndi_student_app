@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/side_drawer.dart';
 import '../../models/user_model.dart';
 import '../../core/helpers/storage_helper.dart';
+import '../../core/api/api_endpoints.dart';
 import '../courses/models/course_model.dart';
 import '../courses/services/course_service.dart';
 import '../courses/screens/course_detail_screen.dart';
@@ -30,7 +31,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   UserModel? currentUser;
 
-  // ── Search State ──────────────────────────────────────
   String searchQuery = "";
   bool isSearching = false;
 
@@ -72,7 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Search Logic ──────────────────────────────────────
   void onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -109,20 +108,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final token = await StorageHelper.getToken() ?? "";
       final q = query.toLowerCase();
 
-      // 1. Search courses by title/description via API
       final courses = await CourseService.getCourses(
         token: token,
         search: query,
         page: 1,
       );
 
-      // 2. Match categories locally
       final catMatches = allCategories
           .where((c) => c.toLowerCase().contains(q))
           .toList();
 
-      // 3. Extract instructor results from the fetched courses
-      // instructor field is now correctly populated from course_model fix
       final Map<String, List<Course>> instructorMap = {};
       for (final c in courses) {
         if (c.instructor.isNotEmpty &&
@@ -136,7 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
         searchedCourses = courses;
         matchedCategories = catMatches;
         instructors = instructorMap.entries
-            .map((e) => InstructorResult(name: e.key, courses: e.value))
+            .map((e) =>
+            InstructorResult(name: e.key, courses: e.value))
             .toList();
         loadingSearch = false;
       });
@@ -146,7 +142,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Build ──────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,11 +159,13 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.06), blurRadius: 8),
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8),
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.menu, color: Colors.black87),
+              icon:
+              const Icon(Icons.menu, color: Colors.black87),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
@@ -181,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
           children: [
-            // ── White Top Section ──
             Container(
               color: Colors.white,
               child: Column(
@@ -241,7 +237,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 60, color: Colors.grey.shade300),
+            Icon(Icons.search_off,
+                size: 60, color: Colors.grey.shade300),
             const SizedBox(height: 12),
             Text(
               "No results found for \"$searchQuery\"",
@@ -261,13 +258,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  "Clear Search",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Inter'),
-                ),
+                child: const Text("Clear Search",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Inter')),
               ),
             ),
           ],
@@ -280,14 +275,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Matched Categories ─────────────────────
           if (matchedCategories.isNotEmpty) ...[
             _sectionHeader("Categories", null),
             SizedBox(
               height: 48,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: matchedCategories.length,
                 itemBuilder: (_, i) {
                   final cat = matchedCategories[i];
@@ -307,22 +302,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.red.shade200),
+                        border: Border.all(
+                            color: Colors.red.shade200),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.category_outlined,
                               size: 16, color: Colors.red),
                           const SizedBox(width: 6),
-                          Text(
-                            cat,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
+                          Text(cat,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontFamily: 'Inter',
+                              )),
                         ],
                       ),
                     ),
@@ -333,14 +327,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
           ],
 
-          // ── Instructors ────────────────────────────
           if (instructors.isNotEmpty) ...[
             _sectionHeader("Instructors", null),
             SizedBox(
               height: 110,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: instructors.length,
                 itemBuilder: (_, i) =>
                     _InstructorChip(instructor: instructors[i]),
@@ -349,14 +343,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
           ],
 
-          // ── Courses ────────────────────────────────
           if (searchedCourses.isNotEmpty) ...[
             _sectionHeader(
                 "Courses", "${searchedCourses.length} results"),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16),
               itemCount: searchedCourses.length,
               itemBuilder: (_, i) =>
                   _SearchCourseCard(course: searchedCourses[i]),
@@ -374,24 +368,20 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Inter',
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontFamily: 'Inter',
+              )),
           if (subtitle != null) ...[
             const SizedBox(width: 8),
-            Text(
-              subtitle,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade500,
-                  fontFamily: 'Inter'),
-            ),
+            Text(subtitle,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                    fontFamily: 'Inter')),
           ],
         ],
       ),
@@ -403,10 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
 class InstructorResult {
   final String name;
   final List<Course> courses;
-  final String? imageUrl;
 
-  InstructorResult(
-      {required this.name, required this.courses, this.imageUrl});
+  InstructorResult({required this.name, required this.courses});
 }
 
 // ── Instructor Chip Widget ─────────────────────────────────
@@ -416,6 +404,9 @@ class _InstructorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl =
+        "https://ui-avatars.com/api/?name=${Uri.encodeComponent(instructor.name)}&background=D4AF37&color=fff";
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -425,8 +416,7 @@ class _InstructorChip extends StatelessWidget {
               instructor: Instructor(
                 name: instructor.name,
                 title: 'Mehndi Artist',
-                imageUrl:
-                'https://ui-avatars.com/api/?name=${Uri.encodeComponent(instructor.name)}&background=D4AF37&color=fff',
+                imageUrl: avatarUrl,
                 bio:
                 'Professional Mehndi Artist with expertise in bridal and traditional designs.',
                 totalCourses: instructor.courses.length,
@@ -437,7 +427,7 @@ class _InstructorChip extends StatelessWidget {
                     .map((c) => InstructorCourse(
                   title: c.title,
                   imageUrl:
-                  'https://api.aktuhub.in/api/uploads/courses/${c.thumbnail}',
+                  "${ApiEndpoints.courseThumbnail}${c.thumbnail}",
                   lessons: c.totalLessons,
                   duration: c.duration,
                   price: '₹${c.price}',
@@ -456,10 +446,9 @@ class _InstructorChip extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 32,
-              backgroundColor: const Color(0xFFD4AF37).withOpacity(0.15),
-              backgroundImage: NetworkImage(
-                'https://ui-avatars.com/api/?name=${Uri.encodeComponent(instructor.name)}&background=D4AF37&color=fff',
-              ),
+              backgroundColor:
+              const Color(0xFFD4AF37).withOpacity(0.15),
+              backgroundImage: NetworkImage(avatarUrl),
             ),
             const SizedBox(height: 8),
             Text(
@@ -490,10 +479,10 @@ class _SearchCourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => CourseDetailScreen(course: course)),
-      ),
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  CourseDetailScreen(course: course))),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
@@ -502,19 +491,17 @@ class _SearchCourseCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
           ],
         ),
         child: Row(
           children: [
-            // Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
-                'https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}',
+                "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
                 width: 80,
                 height: 80,
                 fit: BoxFit.cover,
@@ -528,7 +515,6 @@ class _SearchCourseCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,45 +550,41 @@ class _SearchCourseCard extends StatelessWidget {
                         const Icon(Icons.person_outline,
                             size: 13, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          course.instructor,
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                              fontFamily: 'Inter'),
-                        ),
+                        Text(course.instructor,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                                fontFamily: 'Inter')),
                       ],
                     ),
                   ],
                   const SizedBox(height: 6),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₹${course.price}',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
+                      Text('₹${course.price}',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontFamily: 'Inter',
+                          )),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
                           color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                          BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'Enroll',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
+                        child: const Text('Enroll',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Inter',
+                            )),
                       ),
                     ],
                   ),

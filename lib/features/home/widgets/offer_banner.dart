@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/helpers/storage_helper.dart';
+import '../../../core/api/api_endpoints.dart';
 import '../../courses/models/course_model.dart';
 import '../../courses/screens/course_detail_screen.dart';
 
@@ -24,11 +25,11 @@ class _OfferBannerState extends State<OfferBanner> {
   }
 
   Future<void> _fetchFeatured() async {
+    // Try featured first
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.get(
-        Uri.parse(
-            "https://api.aktuhub.in/api/courses?action=featured"),
+        Uri.parse("${ApiEndpoints.courses}?action=featured"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -37,31 +38,29 @@ class _OfferBannerState extends State<OfferBanner> {
 
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body);
-        final List<dynamic> data =
-        body is Map && body['data'] is List
+        final List<dynamic> data = body is Map && body['data'] is List
             ? body['data']
             : body is List
             ? body
             : [];
-
         if (data.isNotEmpty && mounted) {
           setState(() {
-            _featuredCourse = Course.fromJson(
-                data.first as Map<String, dynamic>);
+            _featuredCourse =
+                Course.fromJson(data.first as Map<String, dynamic>);
             _loading = false;
           });
           return;
         }
       }
     } catch (e) {
-      debugPrint("OFFER BANNER ERROR: $e");
+      debugPrint("OFFER BANNER FEATURED ERROR: $e");
     }
 
-    // Fallback: fetch first course from all courses
+    // Fallback: first course from all courses
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.get(
-        Uri.parse("https://api.aktuhub.in/api/courses"),
+        Uri.parse(ApiEndpoints.courses),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -81,7 +80,9 @@ class _OfferBannerState extends State<OfferBanner> {
           return;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("OFFER BANNER FALLBACK ERROR: $e");
+    }
 
     if (mounted) setState(() => _loading = false);
   }
@@ -100,21 +101,13 @@ class _OfferBannerState extends State<OfferBanner> {
     }
 
     final course = _featuredCourse;
-
-    // If no course found — show static promotional banner
-    if (course == null) {
-      return _staticBanner(context);
-    }
+    if (course == null) return _staticBanner(context);
 
     final hasOld = course.oldPrice.isNotEmpty && course.oldPrice != "0";
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => CourseDetailScreen(course: course),
-        ),
-      ),
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course))),
       child: Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -125,40 +118,31 @@ class _OfferBannerState extends State<OfferBanner> {
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
-              // Background thumbnail
               if (course.thumbnail.isNotEmpty)
                 Positioned.fill(
                   child: Image.network(
-                    "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
+                    "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) =>
                         Container(color: Colors.black87),
                   ),
                 ),
-
-              // Dark overlay
               Positioned.fill(
                 child: Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.centerRight,
                       end: Alignment.centerLeft,
-                      colors: [
-                        Colors.transparent,
-                        Color(0xDD000000),
-                      ],
+                      colors: [Colors.transparent, Color(0xDD000000)],
                     ),
                   ),
                 ),
               ),
-
-              // Content
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
@@ -177,10 +161,7 @@ class _OfferBannerState extends State<OfferBanner> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
-                    // Title
                     Text(
                       course.title,
                       style: const TextStyle(
@@ -192,54 +173,38 @@ class _OfferBannerState extends State<OfferBanner> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-
                     const SizedBox(height: 6),
-
-                    // Instructor
                     if (course.instructor.isNotEmpty)
-                      Text(
-                        "by ${course.instructor}",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-
+                      Text("by ${course.instructor}",
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontFamily: 'Inter')),
                     const SizedBox(height: 12),
-
-                    // Price + CTA row
                     Row(
                       children: [
-                        // Price
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (hasOld)
-                              Text(
-                                "₹${course.oldPrice}",
+                              Text("₹${course.oldPrice}",
+                                  style: const TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 12,
+                                    decoration:
+                                    TextDecoration.lineThrough,
+                                    fontFamily: 'Inter',
+                                  )),
+                            Text("₹${course.price}",
                                 style: const TextStyle(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                  decoration: TextDecoration.lineThrough,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            Text(
-                              "₹${course.price}",
-                              style: const TextStyle(
-                                color: AppColors.gold,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'PlayfairDisplay',
-                              ),
-                            ),
+                                  color: AppColors.gold,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'PlayfairDisplay',
+                                )),
                           ],
                         ),
-
                         const SizedBox(width: 12),
-
-                        // Enroll button
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -247,17 +212,14 @@ class _OfferBannerState extends State<OfferBanner> {
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Text(
-                            "Enroll Now",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
+                          child: const Text("Enroll Now",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Inter',
+                              )),
                         ),
-
                         if (hasOld) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -270,11 +232,10 @@ class _OfferBannerState extends State<OfferBanner> {
                             child: Text(
                               "${(((double.tryParse(course.oldPrice) ?? 0) - (double.tryParse(course.price) ?? 0)) / (double.tryParse(course.oldPrice) ?? 1) * 100).toStringAsFixed(0)}% OFF",
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Inter',
-                              ),
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Inter'),
                             ),
                           ),
                         ],
@@ -308,30 +269,24 @@ class _OfferBannerState extends State<OfferBanner> {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              "SPECIAL OFFER",
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontFamily: 'Inter'),
-            ),
+            child: const Text("SPECIAL OFFER",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontFamily: 'Inter')),
           ),
           const SizedBox(height: 10),
-          const Text(
-            "Bridal Mehndi Masterclass",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Inter',
-            ),
-          ),
+          const Text("Bridal Mehndi Masterclass",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Inter',
+              )),
           const SizedBox(height: 6),
-          const Text(
-            "Learn advanced techniques with Arun",
-            style:
-            TextStyle(color: Colors.white70, fontFamily: 'Inter'),
-          ),
+          const Text("Learn advanced techniques with Arun",
+              style:
+              TextStyle(color: Colors.white70, fontFamily: 'Inter')),
           const SizedBox(height: 12),
           Container(
             padding:
@@ -340,13 +295,11 @@ class _OfferBannerState extends State<OfferBanner> {
               color: Colors.orange,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              "Enroll Now - 30% Off",
-              style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.bold),
-            ),
+            child: const Text("Enroll Now - 30% Off",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.bold)),
           ),
         ],
       ),

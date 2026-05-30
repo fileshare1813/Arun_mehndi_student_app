@@ -8,13 +8,15 @@ import 'package:mehndi_student_app/features/instructor/screens/instructor_profil
 import 'package:mehndi_student_app/features/courses/widgets/course_reviews_tab.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/helpers/storage_helper.dart';
+import '../../../core/api/api_endpoints.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final Course course;
   const CourseDetailScreen({super.key, required this.course});
 
   @override
-  State<CourseDetailScreen> createState() => _CourseDetailScreenState();
+  State<CourseDetailScreen> createState() =>
+      _CourseDetailScreenState();
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen>
@@ -23,11 +25,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   bool _isWishlisted = false;
   int _selectedTab = 1;
 
-  // Enroll state
   bool _enrolling = false;
   bool _isEnrolled = false;
 
-  // Course structure (modules/lessons from API)
   List<Map<String, dynamic>> _modules = [];
   bool _loadingModules = true;
 
@@ -49,13 +49,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     super.dispose();
   }
 
-  // ── Check if already enrolled ─────────────────────────
   Future<void> _checkEnrollment() async {
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.get(
         Uri.parse(
-            "https://api.aktuhub.in/api/enroll?action=check-access&course_id=${widget.course.id}"),
+            "${ApiEndpoints.baseUrl}/enroll?action=check-access&course_id=${widget.course.id}"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -66,21 +65,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         final body = jsonDecode(res.body);
         final data = body['data'];
         if (mounted) {
-          setState(() {
-            _isEnrolled = data['has_access'] == true;
-          });
+          setState(() => _isEnrolled = data['has_access'] == true);
         }
       }
     } catch (_) {}
   }
 
-  // ── Fetch course structure ─────────────────────────────
   Future<void> _fetchCourseStructure() async {
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.get(
         Uri.parse(
-            "https://api.aktuhub.in/api/course-detail?id=${widget.course.id}"),
+            "${ApiEndpoints.courseDetail}?id=${widget.course.id}"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -91,7 +87,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         final body = jsonDecode(res.body);
         final data = body['data'];
         final List<dynamic> rawModules = data['modules'] ?? [];
-
         if (mounted) {
           setState(() {
             _modules = rawModules.map((m) {
@@ -102,7 +97,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   return {
                     "title": l['title']?.toString() ?? '',
                     "duration": l['duration']?.toString() ?? '',
-                    "free": (l['is_preview'] == 1 || l['is_preview'] == true),
+                    "free": (l['is_preview'] == 1 ||
+                        l['is_preview'] == true),
                   };
                 }).toList(),
               };
@@ -119,15 +115,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     }
   }
 
-  // ── Enroll ─────────────────────────────────────────────
   Future<void> _enroll() async {
     if (_isEnrolled) return;
     setState(() => _enrolling = true);
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.post(
-        Uri.parse(
-            "https://api.aktuhub.in/api/enroll?action=enroll"),
+        Uri.parse("${ApiEndpoints.baseUrl}/enroll?action=enroll"),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -139,30 +133,29 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       final body = jsonDecode(res.body);
       if (mounted) {
         if (body['success'] == true ||
-            (body['message']?.toString().toLowerCase().contains('success') ?? false)) {
+            (body['message']
+                ?.toString()
+                .toLowerCase()
+                .contains('success') ??
+                false)) {
           setState(() => _isEnrolled = true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Enrolled successfully! Start learning."),
-              backgroundColor: Colors.green,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Enrolled successfully! Start learning."),
+            backgroundColor: Colors.green,
+          ));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(body['message'] ?? "Enrollment failed"),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+            Text(body['message'] ?? "Enrollment failed"),
+            backgroundColor: Colors.red,
+          ));
         }
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Server error. Please try again."),
-              backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Server error. Please try again."),
+            backgroundColor: Colors.red));
       }
     }
     if (mounted) setState(() => _enrolling = false);
@@ -180,12 +173,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         children: [
           CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(child: _buildVideoHeader(course)),
-
+              SliverToBoxAdapter(
+                  child: _buildVideoHeader(course)),
               SliverToBoxAdapter(
                 child: Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding:
+                  const EdgeInsets.fromLTRB(20, 20, 20, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -208,16 +202,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        course.title,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1C1C1E),
-                          height: 1.3,
-                          fontFamily: 'PlayfairDisplay',
-                        ),
-                      ),
+                      Text(course.title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1C1C1E),
+                            height: 1.3,
+                            fontFamily: 'PlayfairDisplay',
+                          )),
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -241,7 +233,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           ),
                           const SizedBox(width: 16),
                           Icon(Icons.people_outline,
-                              size: 16, color: Colors.grey.shade500),
+                              size: 16,
+                              color: Colors.grey.shade500),
                           const SizedBox(width: 4),
                           Text(
                             "${course.totalStudents > 0 ? course.totalStudents : "5.4k"} Enrolled",
@@ -255,40 +248,37 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            "₹${course.price}",
-                            style: const TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.gold,
-                              fontFamily: 'PlayfairDisplay',
-                            ),
-                          ),
+                          Text("₹${course.price}",
+                              style: const TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.gold,
+                                fontFamily: 'PlayfairDisplay',
+                              )),
                           if (hasOldPrice) ...[
                             const SizedBox(width: 10),
-                            Text(
-                              "₹${course.oldPrice}",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey.shade400,
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
+                            Text("₹${course.oldPrice}",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade400,
+                                  decoration:
+                                  TextDecoration.lineThrough,
+                                )),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius:
+                                BorderRadius.circular(6),
                               ),
-                              child: Text(
-                                "50% OFF",
-                                style: TextStyle(
-                                    color: Colors.green.shade700,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
-                              ),
+                              child: Text("50% OFF",
+                                  style: TextStyle(
+                                      color: Colors.green.shade700,
+                                      fontSize: 11,
+                                      fontWeight:
+                                      FontWeight.bold)),
                             ),
                           ],
                         ],
@@ -298,7 +288,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   ),
                 ),
               ),
-
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarDelegate(
@@ -320,7 +309,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   ),
                 ),
               ),
-
               SliverToBoxAdapter(
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
@@ -328,18 +316,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       ? _buildAboutTab(course)
                       : _selectedTab == 1
                       ? _buildSyllabusTab()
-                      : CourseReviewsTab(courseId: course.id),
+                      : CourseReviewsTab(
+                      courseId: course.id),
                 ),
               ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              const SliverToBoxAdapter(
+                  child: SizedBox(height: 100)),
             ],
           ),
-
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
+            bottom: 0, left: 0, right: 0,
             child: _buildEnrollBar(course, hasOldPrice),
           ),
         ],
@@ -347,14 +333,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ── VIDEO HEADER ───────────────────────────────────────
   Widget _buildVideoHeader(Course course) {
     return Stack(
       children: [
         AspectRatio(
           aspectRatio: 16 / 9,
           child: Image.network(
-            "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
+            "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => Container(
               color: Colors.grey.shade200,
@@ -380,13 +365,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           ),
         ),
         Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
+          top: 0, left: 0, right: 0,
           child: SafeArea(
             child: Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   _iconBtn(Icons.arrow_back,
@@ -400,7 +383,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         : Icons.favorite_border,
                         () => setState(
                             () => _isWishlisted = !_isWishlisted),
-                    color: _isWishlisted ? Colors.red : Colors.white,
+                    color:
+                    _isWishlisted ? Colors.red : Colors.white,
                   ),
                 ],
               ),
@@ -411,14 +395,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           child: Center(
             child: GestureDetector(
               onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        CoursePreviewScreen(course: course)),
-              ),
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          CoursePreviewScreen(course: course))),
               child: Container(
-                width: 60,
-                height: 60,
+                width: 60, height: 60,
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
@@ -433,17 +415,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           ),
         ),
         Positioned(
-          bottom: 10,
-          right: 12,
+          bottom: 10, right: 12,
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.7),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              course.duration.isNotEmpty ? course.duration : "Preview",
+              course.duration.isNotEmpty
+                  ? course.duration
+                  : "Preview",
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
@@ -455,7 +438,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ── ABOUT TAB ──────────────────────────────────────────
   Widget _buildAboutTab(Course course) {
     return Container(
       color: Colors.white,
@@ -515,6 +497,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Widget _buildInstructorCard(Course course) {
+    final instructorName = course.instructor.isNotEmpty
+        ? course.instructor
+        : 'Arun Kumar';
+    // Build avatar URL without hardcoding the domain
+    final avatarUrl =
+        "https://ui-avatars.com/api/?name=${Uri.encodeComponent(instructorName)}&background=D4AF37&color=fff";
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -523,12 +512,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           MaterialPageRoute(
             builder: (_) => InstructorProfileScreen(
               instructor: Instructor(
-                name: course.instructor.isNotEmpty
-                    ? course.instructor
-                    : 'Arun Sir',
+                name: instructorName,
                 title: 'Master Artist',
-                imageUrl:
-                'https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.instructor)}&background=D4AF37&color=fff',
+                imageUrl: avatarUrl,
                 bio:
                 'Founder of Arun Mehndi Studio, dedicated to preserving and innovating the art of henna.',
                 totalCourses: 24,
@@ -552,9 +538,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             CircleAvatar(
               radius: 26,
               backgroundColor: AppColors.gold.withOpacity(0.2),
-              backgroundImage: NetworkImage(
-                "https://ui-avatars.com/api/?name=${Uri.encodeComponent(course.instructor.isNotEmpty ? course.instructor : 'Arun Kumar')}&background=D4AF37&color=fff",
-              ),
+              backgroundImage: NetworkImage(avatarUrl),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -568,10 +552,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.8,
                           fontFamily: 'Inter')),
-                  Text(
-                      course.instructor.isNotEmpty
-                          ? course.instructor
-                          : "Arun Kumar",
+                  Text(instructorName,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
@@ -592,7 +573,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ── SYLLABUS TAB ───────────────────────────────────────
   Widget _buildSyllabusTab() {
     if (_loadingModules) {
       return const Center(
@@ -601,7 +581,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               child: CircularProgressIndicator()));
     }
 
-    final modules = _modules.isNotEmpty ? _modules : _fallbackModules;
+    final modules =
+    _modules.isNotEmpty ? _modules : _fallbackModules;
 
     return Container(
       color: Colors.white,
@@ -617,18 +598,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'PlayfairDisplay')),
-              Text(
-                "${modules.length} modules",
-                style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 12,
-                    fontFamily: 'Inter'),
-              ),
+              Text("${modules.length} modules",
+                  style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 12,
+                      fontFamily: 'Inter')),
             ],
           ),
           const SizedBox(height: 16),
-          ...List.generate(
-              modules.length, (i) => _buildModuleCard(i, modules)),
+          ...List.generate(modules.length,
+                  (i) => _buildModuleCard(i, modules)),
         ],
       ),
     );
@@ -648,10 +627,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -664,8 +642,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 36, height: 36,
                     decoration: BoxDecoration(
                       color: isExpanded
                           ? AppColors.gold.withOpacity(0.15)
@@ -686,7 +663,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
                       children: [
                         Text(module["title"],
                             style: const TextStyle(
@@ -729,7 +707,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
                           Text(item["title"]?.toString() ?? '',
                               style: TextStyle(
@@ -739,9 +718,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                   color: isFree
                                       ? const Color(0xFF1C1C1E)
                                       : Colors.grey.shade500)),
-                          if ((item["duration"]?.toString() ?? '')
+                          if ((item["duration"]?.toString() ??
+                              '')
                               .isNotEmpty)
-                            Text(item["duration"].toString(),
+                            Text(
+                                item["duration"].toString(),
                                 style: TextStyle(
                                     color: Colors.grey.shade400,
                                     fontSize: 11,
@@ -754,8 +735,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.gold.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
+                          color:
+                          AppColors.gold.withOpacity(0.12),
+                          borderRadius:
+                          BorderRadius.circular(6),
                         ),
                         child: const Text("FREE",
                             style: TextStyle(
@@ -766,7 +749,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       )
                     else
                       Icon(Icons.lock_outline,
-                          color: Colors.grey.shade300, size: 16),
+                          color: Colors.grey.shade300,
+                          size: 16),
                   ],
                 ),
               );
@@ -777,7 +761,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ── ENROLL BAR ─────────────────────────────────────────
   Widget _buildEnrollBar(Course course, bool hasOldPrice) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -785,10 +768,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4)),
         ],
       ),
       child: Row(
@@ -820,11 +802,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  color: _isEnrolled ? Colors.green : AppColors.gold,
+                  color: _isEnrolled
+                      ? Colors.green
+                      : AppColors.gold,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: (_isEnrolled ? Colors.green : AppColors.gold)
+                      color: (_isEnrolled
+                          ? Colors.green
+                          : AppColors.gold)
                           .withOpacity(0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
@@ -834,19 +820,19 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 child: Center(
                   child: _enrolling
                       ? const SizedBox(
-                      width: 22,
-                      height: 22,
+                      width: 22, height: 22,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
+                          color: Colors.white,
+                          strokeWidth: 2))
                       : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment:
+                    MainAxisAlignment.center,
                     children: [
                       Icon(
                         _isEnrolled
                             ? Icons.check_circle
                             : Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 20,
+                        color: Colors.white, size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -871,10 +857,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  // ── HELPERS ────────────────────────────────────────────
   Widget _badge(String text, Color textColor, Color bgColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
@@ -895,8 +881,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 38, height: 38,
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.4),
           shape: BoxShape.circle,
@@ -920,7 +905,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     "Business of Mehndi Art — pricing & bookings",
   ];
 
-  // Fallback modules if API fails
   final List<Map<String, dynamic>> _fallbackModules = [
     {
       "title": "Basic Strokes & Elements",
@@ -938,16 +922,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   ];
 }
 
-// ─── TAB BAR DELEGATE ─────────────────────────────────────
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
   _TabBarDelegate(this.tabBar);
 
   @override
   Widget build(BuildContext context, double shrinkOffset,
-      bool overlapsContent) {
-    return Container(color: Colors.white, child: tabBar);
-  }
+      bool overlapsContent) =>
+      Container(color: Colors.white, child: tabBar);
 
   @override
   double get maxExtent => tabBar.preferredSize.height;

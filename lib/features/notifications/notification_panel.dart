@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_fonts.dart';
 import '../../../core/helpers/storage_helper.dart';
+import '../../../core/api/api_endpoints.dart';
 
 // ─── MODEL ───────────────────────────────────────────────
 class AppNotification {
@@ -55,14 +56,12 @@ class AppNotification {
 
 // ─── API SERVICE ──────────────────────────────────────────
 class NotificationService {
-  static const String _base = "https://api.aktuhub.in/api";
-
   static Future<List<AppNotification>> getNotifications() async {
     final token = await StorageHelper.getToken();
     if (token == null) return [];
 
     final res = await http.get(
-      Uri.parse("$_base/notifications"),
+      Uri.parse(ApiEndpoints.notifications),
       headers: {
         "Authorization": "Bearer $token",
         "Accept": "application/json",
@@ -82,7 +81,8 @@ class NotificationService {
       return data
           .map((e) {
         try {
-          return AppNotification.fromJson(e as Map<String, dynamic>);
+          return AppNotification.fromJson(
+              e as Map<String, dynamic>);
         } catch (_) {
           return null;
         }
@@ -98,7 +98,7 @@ class NotificationService {
     if (token == null) return false;
 
     final res = await http.post(
-      Uri.parse("$_base/notifications"),
+      Uri.parse(ApiEndpoints.notifications),
       headers: {
         "Authorization": "Bearer $token",
         "Accept": "application/json",
@@ -132,9 +132,8 @@ class _NotificationBellState extends State<NotificationBell> {
     try {
       final list = await NotificationService.getNotifications();
       if (mounted) {
-        setState(() {
-          _unreadCount = list.where((n) => !n.isRead).length;
-        });
+        setState(() =>
+        _unreadCount = list.where((n) => !n.isRead).length);
       }
     } catch (_) {}
   }
@@ -144,11 +143,8 @@ class _NotificationBellState extends State<NotificationBell> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _NotificationPanel(
-        onChanged: () {
-          _loadUnreadCount();
-        },
-      ),
+      builder: (_) =>
+          _NotificationPanel(onChanged: _loadUnreadCount),
     ).then((_) => _loadUnreadCount());
   }
 
@@ -163,9 +159,7 @@ class _NotificationBellState extends State<NotificationBell> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-            ),
+                color: Colors.black.withOpacity(0.06), blurRadius: 8),
           ],
         ),
         padding: const EdgeInsets.all(10),
@@ -182,17 +176,14 @@ class _NotificationBellState extends State<NotificationBell> {
                   width: 16,
                   height: 16,
                   decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
+                      color: AppColors.primary, shape: BoxShape.circle),
                   child: Center(
                     child: Text(
                       _unreadCount > 9 ? '9+' : '$_unreadCount',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -210,7 +201,8 @@ class _NotificationPanel extends StatefulWidget {
   const _NotificationPanel({required this.onChanged});
 
   @override
-  State<_NotificationPanel> createState() => _NotificationPanelState();
+  State<_NotificationPanel> createState() =>
+      _NotificationPanelState();
 }
 
 class _NotificationPanelState extends State<_NotificationPanel> {
@@ -249,7 +241,6 @@ class _NotificationPanelState extends State<_NotificationPanel> {
   int get _unread => _notifications.where((n) => !n.isRead).length;
 
   Future<void> _markRead(String id) async {
-    // Optimistic update
     setState(() {
       final idx = _notifications.indexWhere((n) => n.id == id);
       if (idx != -1) _notifications[idx].isRead = true;
@@ -261,46 +252,33 @@ class _NotificationPanelState extends State<_NotificationPanel> {
   Future<void> _markAllRead() async {
     final unread = _notifications.where((n) => !n.isRead).toList();
     setState(() {
-      for (final n in _notifications) {
-        n.isRead = true;
-      }
+      for (final n in _notifications) n.isRead = true;
     });
     widget.onChanged();
-    for (final n in unread) {
-      await NotificationService.markRead(n.id);
-    }
+    for (final n in unread) await NotificationService.markRead(n.id);
   }
 
   Color _typeColor(String type) {
     switch (type) {
-      case 'live':
-        return AppColors.primary;
-      case 'offer':
-        return AppColors.gold;
-      case 'course':
-        return Colors.blue;
-      default:
-        return Colors.teal;
+      case 'live': return AppColors.primary;
+      case 'offer': return AppColors.gold;
+      case 'course': return Colors.blue;
+      default: return Colors.teal;
     }
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'live':
-        return Icons.live_tv_rounded;
-      case 'offer':
-        return Icons.local_offer_rounded;
-      case 'course':
-        return Icons.menu_book_rounded;
-      default:
-        return Icons.notifications_rounded;
+      case 'live': return Icons.live_tv_rounded;
+      case 'offer': return Icons.local_offer_rounded;
+      case 'course': return Icons.menu_book_rounded;
+      default: return Icons.notifications_rounded;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final sh = MediaQuery.of(context).size.height;
-
     return Container(
       height: sh * 0.75,
       decoration: const BoxDecoration(
@@ -309,31 +287,24 @@ class _NotificationPanelState extends State<_NotificationPanel> {
       ),
       child: Column(
         children: [
-          // Handle
           Container(
             margin: const EdgeInsets.only(top: 10),
-            width: 38,
-            height: 4,
+            width: 38, height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(10),
-            ),
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10)),
           ),
-
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 14, 10),
             child: Row(
               children: [
-                Text(
-                  'Notifications',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                    fontFamily: AppFonts.display,
-                  ),
-                ),
+                Text('Notifications',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontFamily: AppFonts.display,
+                    )),
                 const SizedBox(width: 8),
                 if (_unread > 0)
                   Container(
@@ -343,14 +314,11 @@ class _NotificationPanelState extends State<_NotificationPanel> {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      '$_unread new',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text('$_unread new',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold)),
                   ),
                 const Spacer(),
                 if (_unread > 0)
@@ -361,29 +329,21 @@ class _NotificationPanelState extends State<_NotificationPanel> {
                           horizontal: 10, vertical: 4),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    child: const Text(
-                      'Mark all read',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: const Text('Mark all read',
+                        style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
                   ),
-                // Refresh
                 IconButton(
                   icon: const Icon(Icons.refresh,
                       color: Colors.black45, size: 20),
                   onPressed: _fetch,
-                  tooltip: 'Refresh',
                 ),
               ],
             ),
           ),
-
           Divider(color: Colors.grey.shade100, height: 1),
-
-          // Body
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -394,14 +354,12 @@ class _NotificationPanelState extends State<_NotificationPanel> {
                 : RefreshIndicator(
               onRefresh: _fetch,
               child: ListView.separated(
-                padding:
-                const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 6),
                 itemCount: _notifications.length,
                 separatorBuilder: (_, __) => Divider(
                   color: Colors.grey.shade100,
-                  height: 1,
-                  indent: 70,
-                  endIndent: 16,
+                  height: 1, indent: 70, endIndent: 16,
                 ),
                 itemBuilder: (_, i) {
                   final n = _notifications[i];
@@ -415,18 +373,14 @@ class _NotificationPanelState extends State<_NotificationPanel> {
               ),
             ),
           ),
-
           if (!_loading && _notifications.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 16, top: 6),
-              child: Text(
-                'Pull down to refresh',
-                style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 11,
-                  fontFamily: AppFonts.body,
-                ),
-              ),
+              child: Text('Pull down to refresh',
+                  style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 11,
+                      fontFamily: AppFonts.body)),
             ),
         ],
       ),
@@ -440,13 +394,11 @@ class _NotificationPanelState extends State<_NotificationPanel> {
         children: [
           Icon(Icons.wifi_off, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 10),
-          Text(
-            'Failed to load notifications',
-            style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 14,
-                fontFamily: AppFonts.body),
-          ),
+          Text('Failed to load notifications',
+              style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontFamily: AppFonts.body)),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _fetch,
@@ -466,21 +418,17 @@ class _NotificationPanelState extends State<_NotificationPanel> {
           Icon(Icons.notifications_off_outlined,
               size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 10),
-          Text(
-            'No notifications yet',
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 15,
-              fontFamily: AppFonts.body,
-            ),
-          ),
+          Text('No notifications yet',
+              style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 15,
+                  fontFamily: AppFonts.body)),
         ],
       ),
     );
   }
 }
 
-// ─── TILE ────────────────────────────────────────────────
 class _NotifTile extends StatelessWidget {
   final AppNotification notification;
   final Color color;
@@ -497,7 +445,6 @@ class _NotifTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnread = !notification.isRead;
-
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -510,12 +457,10 @@ class _NotifTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 40, height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.10),
-                shape: BoxShape.circle,
-              ),
+                  color: color.withOpacity(0.10),
+                  shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 12),
@@ -526,54 +471,43 @@ class _NotifTile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          notification.title,
-                          style: TextStyle(
-                            fontFamily: AppFonts.body,
-                            fontSize: 14,
-                            fontWeight: isUnread
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: isUnread
-                                ? Colors.black87
-                                : Colors.black54,
-                          ),
-                        ),
+                        child: Text(notification.title,
+                            style: TextStyle(
+                              fontFamily: AppFonts.body,
+                              fontSize: 14,
+                              fontWeight: isUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: isUnread
+                                  ? Colors.black87
+                                  : Colors.black54,
+                            )),
                       ),
                       if (isUnread)
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 8, height: 8,
                           margin: const EdgeInsets.only(left: 6),
                           decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
+                              color: color, shape: BoxShape.circle),
                         ),
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    notification.message,
-                    style: TextStyle(
-                      fontFamily: AppFonts.body,
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(notification.message,
+                      style: TextStyle(
+                          fontFamily: AppFonts.body,
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          height: 1.4),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                   if (notification.timeAgo.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      notification.timeAgo,
-                      style: TextStyle(
-                        fontFamily: AppFonts.body,
-                        fontSize: 11,
-                        color: Colors.grey.shade400,
-                      ),
-                    ),
+                    Text(notification.timeAgo,
+                        style: TextStyle(
+                            fontFamily: AppFonts.body,
+                            fontSize: 11,
+                            color: Colors.grey.shade400)),
                   ],
                 ],
               ),

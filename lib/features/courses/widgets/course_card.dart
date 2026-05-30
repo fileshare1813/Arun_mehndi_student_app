@@ -10,7 +10,6 @@ class CourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // ✅ Puri card tap karne par detail screen open
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
@@ -34,7 +33,7 @@ class CourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // THUMBNAIL
+            // ── THUMBNAIL ──────────────────────────────
             Stack(
               children: [
                 ClipRRect(
@@ -42,7 +41,6 @@ class CourseCard extends StatelessWidget {
                       top: Radius.circular(16)),
                   child: Image.network(
                     "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
-                    // "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
                     height: 170,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -57,7 +55,7 @@ class CourseCard extends StatelessWidget {
                   ),
                 ),
 
-                // Play icon overlay
+                // Gradient overlay
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
@@ -114,7 +112,7 @@ class CourseCard extends StatelessWidget {
               ],
             ),
 
-            // CONTENT
+            // ── CONTENT ────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -168,7 +166,8 @@ class CourseCard extends StatelessWidget {
 
                   // Price + Enroll
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         "₹${course.price}",
@@ -191,10 +190,12 @@ class CourseCard extends StatelessWidget {
                               horizontal: 20, vertical: 10),
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius:
+                            BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.red.withOpacity(0.25),
+                                color:
+                                Colors.red.withOpacity(0.25),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               )

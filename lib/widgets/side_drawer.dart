@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../core/helpers/storage_helper.dart';
+import '../core/api/api_endpoints.dart';
 import '../models/user_model.dart';
 import '../features/auth/login_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -21,13 +22,13 @@ class _SideDrawerState extends State<SideDrawer> {
   void initState() {
     super.initState();
     _loadUser();
-    // Real-time update sunna
     ProfileUpdateNotifier.instance.addListener(_onProfileUpdated);
   }
 
   @override
   void dispose() {
-    ProfileUpdateNotifier.instance.removeListener(_onProfileUpdated);
+    ProfileUpdateNotifier.instance
+        .removeListener(_onProfileUpdated);
     super.dispose();
   }
 
@@ -68,7 +69,7 @@ class _SideDrawerState extends State<SideDrawer> {
   String get _avatarUrl {
     final img = _user?.profileImage;
     if (img != null && img.isNotEmpty) {
-      return "https://api.aktuhub.in/uploads/profile_images/$img";
+      return "${ApiEndpoints.profileImage}$img";
     }
     return "https://ui-avatars.com/api/?name=${Uri.encodeComponent(_user?.name ?? 'User')}&background=D4AF37&color=fff";
   }
@@ -87,7 +88,8 @@ class _SideDrawerState extends State<SideDrawer> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const ProfileScreen()),
                   );
                 },
                 child: Container(
@@ -95,19 +97,22 @@ class _SideDrawerState extends State<SideDrawer> {
                       horizontal: 20, vertical: 24),
                   child: Row(
                     children: [
-                      // Avatar with live update
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppColors.gold.withOpacity(0.4), width: 2),
+                              color:
+                              AppColors.gold.withOpacity(0.4),
+                              width: 2),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(2),
                           child: CircleAvatar(
                             radius: 28,
-                            backgroundColor: AppColors.gold.withOpacity(0.2),
-                            backgroundImage: NetworkImage(_avatarUrl),
+                            backgroundColor:
+                            AppColors.gold.withOpacity(0.2),
+                            backgroundImage:
+                            NetworkImage(_avatarUrl),
                             onBackgroundImageError: (_, __) {},
                           ),
                         ),
@@ -116,21 +121,27 @@ class _SideDrawerState extends State<SideDrawer> {
                       Expanded(
                         child: _loading
                             ? const SizedBox(
-                            height: 12, width: 80,
+                            height: 12,
+                            width: 80,
                             child: LinearProgressIndicator(
                                 color: AppColors.gold))
                             : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _capitalized(_user?.name ?? ''),
+                              _capitalized(
+                                  _user?.name ?? ''),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'PlayfairDisplay',
+                                fontWeight:
+                                FontWeight.bold,
+                                fontFamily:
+                                'PlayfairDisplay',
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              overflow:
+                              TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -139,9 +150,11 @@ class _SideDrawerState extends State<SideDrawer> {
                                   color: Colors.white54,
                                   fontSize: 12,
                                   fontFamily: 'Inter'),
-                              overflow: TextOverflow.ellipsis,
+                              overflow:
+                              TextOverflow.ellipsis,
                             ),
-                            if ((_user?.phone ?? '').isNotEmpty) ...[
+                            if ((_user?.phone ?? '')
+                                .isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
                                 "+91 ${_user!.phone}",
@@ -161,7 +174,6 @@ class _SideDrawerState extends State<SideDrawer> {
                 ),
               ),
 
-              // Student badge
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(
@@ -169,8 +181,8 @@ class _SideDrawerState extends State<SideDrawer> {
                 decoration: BoxDecoration(
                   color: AppColors.gold.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border:
-                  Border.all(color: AppColors.gold.withOpacity(0.3)),
+                  border: Border.all(
+                      color: AppColors.gold.withOpacity(0.3)),
                 ),
                 child: const Text(
                   "STUDENT",
@@ -186,7 +198,6 @@ class _SideDrawerState extends State<SideDrawer> {
 
               Divider(color: Colors.white.withOpacity(0.08)),
 
-              // ── Menu Items ───────────────────────────
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -197,27 +208,33 @@ class _SideDrawerState extends State<SideDrawer> {
                         onTap: () => Navigator.pop(context)),
                     _item(Icons.live_tv_outlined, "Live Classes",
                         onTap: () => Navigator.pop(context)),
-                    _item(Icons.workspace_premium_outlined, "Certificates",
+                    _item(Icons.workspace_premium_outlined,
+                        "Certificates",
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const CertificatesScreen()),
+                                builder: (_) =>
+                                const CertificatesScreen()),
                           );
                         }),
-                    _item(Icons.card_giftcard_outlined, "Refer & Earn",
+                    _item(Icons.card_giftcard_outlined,
+                        "Refer & Earn",
                         onTap: () => Navigator.pop(context)),
                     Divider(
-                        color: Colors.white.withOpacity(0.08), height: 24),
-                    _item(Icons.person_outline, "Profile", onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ProfileScreen()),
-                      );
-                    }),
+                        color: Colors.white.withOpacity(0.08),
+                        height: 24),
+                    _item(Icons.person_outline, "Profile",
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                const ProfileScreen()),
+                          );
+                        }),
                     _item(Icons.settings_outlined, "Settings",
                         onTap: () => Navigator.pop(context)),
                     _item(Icons.help_outline, "Help & Support",
@@ -228,10 +245,10 @@ class _SideDrawerState extends State<SideDrawer> {
 
               Divider(color: Colors.white.withOpacity(0.08)),
 
-              // ── Logout ───────────────────────────────
               ListTile(
                 leading: Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
@@ -261,7 +278,8 @@ class _SideDrawerState extends State<SideDrawer> {
       {required VoidCallback onTap}) {
     return ListTile(
       leading: Container(
-        width: 36, height: 36,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(10),
@@ -270,7 +288,9 @@ class _SideDrawerState extends State<SideDrawer> {
       ),
       title: Text(title,
           style: const TextStyle(
-              color: Colors.white, fontFamily: 'Inter', fontSize: 14)),
+              color: Colors.white,
+              fontFamily: 'Inter',
+              fontSize: 14)),
       onTap: onTap,
     );
   }
@@ -293,21 +313,27 @@ class _SideDrawerState extends State<SideDrawer> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 60, height: 60,
+              width: 60,
+              height: 60,
               decoration: const BoxDecoration(
-                  color: Color(0xFF3A1F1F), shape: BoxShape.circle),
-              child: const Icon(Icons.logout, color: Colors.red, size: 28),
+                  color: Color(0xFF3A1F1F),
+                  shape: BoxShape.circle),
+              child: const Icon(Icons.logout,
+                  color: Colors.red, size: 28),
             ),
             const SizedBox(height: 16),
             const Text("Logout Confirmation",
                 style: TextStyle(
-                    fontSize: 20, color: Colors.white,
-                    fontWeight: FontWeight.bold, fontFamily: 'PlayfairDisplay')),
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'PlayfairDisplay')),
             const SizedBox(height: 10),
             const Text(
                 "Are you sure you want to log out of Arun Mehndi Studio?",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontFamily: 'Inter')),
+                style: TextStyle(
+                    color: Colors.white70, fontFamily: 'Inter')),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -315,13 +341,15 @@ class _SideDrawerState extends State<SideDrawer> {
                 onPressed: _logout,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Text("Log Out",
                     style: TextStyle(
-                        fontSize: 16, color: Colors.white,
+                        fontSize: 16,
+                        color: Colors.white,
                         fontFamily: 'Inter')),
               ),
             ),
@@ -332,13 +360,15 @@ class _SideDrawerState extends State<SideDrawer> {
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Text("Cancel",
                     style: TextStyle(
-                        color: Colors.white70, fontFamily: 'Inter')),
+                        color: Colors.white70,
+                        fontFamily: 'Inter')),
               ),
             ),
           ],

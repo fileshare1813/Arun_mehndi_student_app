@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_colors.dart';
 import '../../core/helpers/storage_helper.dart';
+import '../../core/api/api_endpoints.dart';
 import '../courses/screens/course_detail_screen.dart';
 import '../courses/models/course_model.dart';
 
@@ -33,7 +34,8 @@ class EnrolledCourse {
       thumbnail: json['thumbnail']?.toString() ?? '',
       level: json['level']?.toString() ?? '',
       duration: json['duration']?.toString() ?? '',
-      progress: double.tryParse(json['progress']?.toString() ?? '0') ?? 0.0,
+      progress:
+      double.tryParse(json['progress']?.toString() ?? '0') ?? 0.0,
       enrolledAt: json['enrolled_at']?.toString() ?? '',
     );
   }
@@ -76,9 +78,9 @@ class _LearningScreenState extends State<LearningScreen>
 
     try {
       final token = await StorageHelper.getToken() ?? '';
+      // enroll?action=my-courses  →  built from baseUrl
       final res = await http.get(
-        Uri.parse(
-            "https://api.aktuhub.in/api/enroll?action=my-courses"),
+        Uri.parse("${ApiEndpoints.baseUrl}/enroll?action=my-courses"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -97,24 +99,26 @@ class _LearningScreenState extends State<LearningScreen>
           });
         }
       } else {
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _hasError = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("MY COURSES ERROR: $e");
+      if (mounted) {
+        setState(() {
           _loading = false;
           _hasError = true;
         });
       }
-    } catch (e) {
-      debugPrint("MY COURSES ERROR: $e");
-      if (mounted) setState(() {
-        _loading = false;
-        _hasError = true;
-      });
     }
   }
 
   List<EnrolledCourse> get _inProgress =>
       _courses.where((c) => c.progress > 0 && c.progress < 100).toList();
-  List<EnrolledCourse> get _notStarted =>
-      _courses.where((c) => c.progress == 0).toList();
   List<EnrolledCourse> get _completed =>
       _courses.where((c) => c.progress >= 100).toList();
 
@@ -176,14 +180,17 @@ class _LearningScreenState extends State<LearningScreen>
           const SizedBox(height: 12),
           const Text("Failed to load courses",
               style: TextStyle(
-                  color: Colors.grey, fontSize: 16, fontFamily: 'Inter')),
+                  color: Colors.grey,
+                  fontSize: 16,
+                  fontFamily: 'Inter')),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: _fetchMyCourses,
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary),
             child: const Text("Retry",
-                style: TextStyle(color: Colors.white, fontFamily: 'Inter')),
+                style:
+                TextStyle(color: Colors.white, fontFamily: 'Inter')),
           ),
         ],
       ),
@@ -255,7 +262,7 @@ class _EnrolledCourseCard extends StatelessWidget {
             child: Stack(
               children: [
                 Image.network(
-                  "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
+                  "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
                   height: 140,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -273,7 +280,10 @@ class _EnrolledCourseCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0x88000000)],
+                        colors: [
+                          Colors.transparent,
+                          Color(0x88000000)
+                        ],
                       ),
                     ),
                   ),
@@ -299,7 +309,6 @@ class _EnrolledCourseCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                // Progress badge
                 Positioned(
                   bottom: 10,
                   right: 10,
@@ -342,8 +351,6 @@ class _EnrolledCourseCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 10),
-
-                // Progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
@@ -358,7 +365,6 @@ class _EnrolledCourseCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-
                 Row(
                   children: [
                     if (course.duration.isNotEmpty) ...[
@@ -377,7 +383,6 @@ class _EnrolledCourseCard extends StatelessWidget {
                     const Spacer(),
                     GestureDetector(
                       onTap: () {
-                        // Navigate to course — build a minimal Course object
                         final c = Course(
                           id: course.id,
                           title: course.title,
@@ -391,7 +396,8 @@ class _EnrolledCourseCard extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CourseDetailScreen(course: c),
+                            builder: (_) =>
+                                CourseDetailScreen(course: c),
                           ),
                         );
                       },

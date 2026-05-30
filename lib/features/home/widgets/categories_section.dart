@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../../core/api/api_endpoints.dart';
 
 class CategoriesSection extends StatelessWidget {
   final VoidCallback? onSeeAll;
@@ -13,13 +14,10 @@ class CategoriesSection extends StatelessWidget {
   });
 
   Future<List<CategoryModel>> fetchCategories() async {
-    // Correct endpoint — no .php extension, uses the router in index.php
-    const String url = "https://api.aktuhub.in/api/categories";
-
     try {
       final response = await http
           .get(
-        Uri.parse(url),
+        Uri.parse("${ApiEndpoints.baseUrl}/categories"),
         headers: {"Accept": "application/json"},
       )
           .timeout(const Duration(seconds: 15));
@@ -27,7 +25,6 @@ class CategoriesSection extends StatelessWidget {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
 
-        // API returns { success: true, data: [...] }
         final List<dynamic> data;
         if (jsonData is Map && jsonData['data'] is List) {
           data = jsonData['data'] as List;
@@ -40,7 +37,8 @@ class CategoriesSection extends StatelessWidget {
         return data
             .map((e) {
           try {
-            return CategoryModel.fromJson(e as Map<String, dynamic>);
+            return CategoryModel.fromJson(
+                e as Map<String, dynamic>);
           } catch (_) {
             return null;
           }
@@ -48,7 +46,8 @@ class CategoriesSection extends StatelessWidget {
             .whereType<CategoryModel>()
             .toList();
       } else {
-        throw Exception("Failed to load categories: ${response.statusCode}");
+        throw Exception(
+            "Failed to load categories: ${response.statusCode}");
       }
     } catch (e) {
       throw Exception("Categories fetch error: $e");
@@ -67,8 +66,8 @@ class CategoriesSection extends StatelessWidget {
           );
         }
 
-        // On error or empty — show static fallback categories
-        final categories = (snapshot.hasError || (snapshot.data?.isEmpty ?? true))
+        final categories =
+        (snapshot.hasError || (snapshot.data?.isEmpty ?? true))
             ? _fallbackCategories()
             : snapshot.data!;
 
@@ -83,18 +82,14 @@ class CategoriesSection extends StatelessWidget {
                   const Text(
                     "Categories",
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   GestureDetector(
                     onTap: onSeeAll,
                     child: const Text(
                       "See All",
                       style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.w500,
-                      ),
+                          color: Colors.red, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
@@ -137,11 +132,7 @@ class CategoryItem extends StatelessWidget {
   final CategoryModel category;
   final VoidCallback? onTap;
 
-  const CategoryItem({
-    super.key,
-    required this.category,
-    this.onTap,
-  });
+  const CategoryItem({super.key, required this.category, this.onTap});
 
   String getEmoji(String name) {
     switch (name.toLowerCase()) {
@@ -167,10 +158,8 @@ class CategoryItem extends StatelessWidget {
           CircleAvatar(
             radius: 30,
             backgroundColor: Colors.pink.shade50,
-            child: Text(
-              getEmoji(category.name),
-              style: const TextStyle(fontSize: 26),
-            ),
+            child: Text(getEmoji(category.name),
+                style: const TextStyle(fontSize: 26)),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -181,9 +170,7 @@ class CategoryItem extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+                  fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -198,12 +185,11 @@ class CategoryModel {
   final String? icon;
   final String description;
 
-  CategoryModel({
-    required this.id,
-    required this.name,
-    this.icon,
-    required this.description,
-  });
+  CategoryModel(
+      {required this.id,
+        required this.name,
+        this.icon,
+        required this.description});
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(

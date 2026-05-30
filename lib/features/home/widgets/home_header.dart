@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/helpers/storage_helper.dart';
+import '../../../core/api/api_endpoints.dart';
 import '../../../models/user_model.dart';
 import '../../profile/profile_screen.dart';
 
@@ -47,7 +46,7 @@ class _HomeHeaderState extends State<HomeHeader> {
 
   String get _avatarUrl {
     if (_user.profileImage != null && _user.profileImage!.isNotEmpty) {
-      return "https://api.aktuhub.in/uploads/profile_images/${_user.profileImage}";
+      return "${ApiEndpoints.profileImage}${_user.profileImage}";
     }
     return "https://ui-avatars.com/api/?name=${Uri.encodeComponent(_user.name)}&background=D4AF37&color=fff";
   }
@@ -83,11 +82,11 @@ class _HomeHeaderState extends State<HomeHeader> {
               ),
             ],
           ),
-          // Avatar — updates in real-time when profile changes
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              MaterialPageRoute(
+                  builder: (_) => const ProfileScreen()),
             ),
             child: Container(
               decoration: BoxDecoration(

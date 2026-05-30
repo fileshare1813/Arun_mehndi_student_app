@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/helpers/storage_helper.dart';
+import '../../../core/api/api_endpoints.dart';
 
 // ─── MODEL ───────────────────────────────────────────────
 class Review {
@@ -35,8 +36,10 @@ class Review {
       final diff = DateTime.now().difference(dt);
       if (diff.inDays < 1) return 'Today';
       if (diff.inDays < 7) return '${diff.inDays}d ago';
-      if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-      if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}mo ago';
+      if (diff.inDays < 30)
+        return '${(diff.inDays / 7).floor()}w ago';
+      if (diff.inDays < 365)
+        return '${(diff.inDays / 30).floor()}mo ago';
       return '${(diff.inDays / 365).floor()}y ago';
     } catch (_) {
       return '';
@@ -47,7 +50,6 @@ class Review {
 // ─── REVIEWS WIDGET ───────────────────────────────────────
 class CourseReviewsTab extends StatefulWidget {
   final int courseId;
-
   const CourseReviewsTab({super.key, required this.courseId});
 
   @override
@@ -60,7 +62,6 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
   bool _loading = true;
   bool _submitting = false;
 
-  // Submit review
   int _myRating = 5;
   final _commentCtrl = TextEditingController();
   bool _showForm = false;
@@ -84,7 +85,7 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.get(
         Uri.parse(
-            "https://api.aktuhub.in/api/reviews?course_id=${widget.courseId}"),
+            "${ApiEndpoints.reviews}?course_id=${widget.courseId}"),
         headers: {
           "Authorization": "Bearer $token",
           "Accept": "application/json",
@@ -97,11 +98,12 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
         if (mounted) {
           setState(() {
             _reviews = (data['reviews'] as List? ?? [])
-                .map((e) => Review.fromJson(e as Map<String, dynamic>))
+                .map((e) =>
+                Review.fromJson(e as Map<String, dynamic>))
                 .toList();
-            _avgRating =
-                double.tryParse(data['rating']?.toString() ?? '0') ??
-                    0.0;
+            _avgRating = double.tryParse(
+                data['rating']?.toString() ?? '0') ??
+                0.0;
             _loading = false;
           });
         }
@@ -117,15 +119,14 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
   Future<void> _submitReview() async {
     if (_commentCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please write a review")),
-      );
+          const SnackBar(content: Text("Please write a review")));
       return;
     }
     setState(() => _submitting = true);
     try {
       final token = await StorageHelper.getToken() ?? '';
       final res = await http.post(
-        Uri.parse("https://api.aktuhub.in/api/reviews"),
+        Uri.parse(ApiEndpoints.reviews),
         headers: {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
@@ -148,23 +149,19 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
         await _fetchReviews();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Review submitted!")),
-          );
+              const SnackBar(content: Text("Review submitted!")));
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(body['message'] ?? "Failed to submit")),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+              Text(body['message'] ?? "Failed to submit")));
         }
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Server error. Please try again.")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Server error. Please try again.")));
       }
     }
     if (mounted) setState(() => _submitting = false);
@@ -175,9 +172,8 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
     if (_loading) {
       return const Center(
           child: Padding(
-            padding: EdgeInsets.all(40),
-            child: CircularProgressIndicator(),
-          ));
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator()));
     }
 
     return Container(
@@ -265,7 +261,9 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    _showForm ? Icons.close : Icons.rate_review_outlined,
+                    _showForm
+                        ? Icons.close
+                        : Icons.rate_review_outlined,
                     color: _showForm
                         ? Colors.grey
                         : AppColors.primary,
@@ -301,15 +299,13 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Your Rating",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: Colors.black87,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+                  const Text("Your Rating",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.black87,
+                        fontFamily: 'Inter',
+                      )),
                   const SizedBox(height: 8),
                   Row(
                     children: List.generate(5, (i) {
@@ -318,8 +314,7 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
                         onTap: () =>
                             setState(() => _myRating = star),
                         child: Padding(
-                          padding:
-                          const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.only(right: 6),
                           child: Icon(
                             star <= _myRating
                                 ? Icons.star
@@ -365,17 +360,16 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius:
+                            BorderRadius.circular(10)),
                       ),
                       child: _submitting
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2),
-                      )
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2))
                           : const Text("Submit Review",
                           style: TextStyle(
                               color: Colors.white,
@@ -391,17 +385,14 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
           Divider(color: Colors.grey.shade100),
           const SizedBox(height: 12),
 
-          // ── Reviews List ────────────────────────────
           if (_reviews.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  "No reviews yet. Be the first!",
-                  style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontFamily: 'Inter'),
-                ),
+                child: Text("No reviews yet. Be the first!",
+                    style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontFamily: 'Inter')),
               ),
             )
           else
@@ -493,15 +484,13 @@ class _CourseReviewsTabState extends State<CourseReviewsTab> {
           ),
           if (r.comment.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              r.comment,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 13,
-                height: 1.5,
-                fontFamily: 'Inter',
-              ),
-            ),
+            Text(r.comment,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  height: 1.5,
+                  fontFamily: 'Inter',
+                )),
           ],
           const SizedBox(height: 12),
           Divider(color: Colors.grey.shade100),

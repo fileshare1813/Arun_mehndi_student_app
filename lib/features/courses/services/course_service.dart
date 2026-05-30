@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/course_model.dart';
+import '../../../core/api/api_endpoints.dart';
 
 class CourseService {
-  static const String baseUrl = "https://api.aktuhub.in/api";
 
   static Future<List<Course>> getCourses({
     required String token,
@@ -13,16 +13,15 @@ class CourseService {
     String? search,
     int page = 1,
   }) async {
+
     final queryParams = <String, String>{
       "page": page.toString(),
     };
 
-    // Backend CourseController checks $_GET['category'] as category name string
     if (category != null && category.trim().isNotEmpty) {
       queryParams["category"] = category.trim();
     }
 
-    // Backend searchCourses uses level as-is — API stores Basic/Medium/Advanced
     if (level != null && level.trim().isNotEmpty) {
       queryParams["level"] = _mapLevel(level.trim());
     }
@@ -31,8 +30,8 @@ class CourseService {
       queryParams["search"] = search.trim();
     }
 
-    final uri =
-    Uri.parse("$baseUrl/courses").replace(queryParameters: queryParams);
+    final uri = Uri.parse(ApiEndpoints.courses)
+        .replace(queryParameters: queryParams);
 
     debugPrint("🌐 CourseService GET: $uri");
 
@@ -48,12 +47,12 @@ class CourseService {
           .timeout(const Duration(seconds: 20));
 
       debugPrint("📡 STATUS: ${response.statusCode}");
-      debugPrint("📦 BODY: ${response.body.substring(0, response.body.length.clamp(0, 300))}");
+      debugPrint(
+          "📦 BODY: ${response.body.substring(0, response.body.length.clamp(0, 300))}");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
 
-        // API wraps in { success, data: [...] }
         final List<dynamic> list;
         if (decoded is Map && decoded['data'] is List) {
           list = decoded['data'] as List;
@@ -79,7 +78,8 @@ class CourseService {
         debugPrint("✅ Parsed ${courses.length} courses");
         return courses;
       } else {
-        debugPrint("❌ API ERROR: ${response.statusCode} — ${response.body}");
+        debugPrint(
+            "❌ API ERROR: ${response.statusCode} — ${response.body}");
         throw Exception("API ERROR: ${response.statusCode}");
       }
     } catch (e) {
@@ -88,7 +88,7 @@ class CourseService {
     }
   }
 
-  /// Maps UI filter labels → API level values stored in DB (Basic/Medium/Advanced)
+  /// Maps UI filter labels → API level values stored in DB
   static String _mapLevel(String level) {
     switch (level.toLowerCase()) {
       case "beginner":
@@ -101,7 +101,6 @@ class CourseService {
       case "advanced":
         return "Advanced";
       default:
-      // Return as-is if already correct casing
         return level;
     }
   }

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../courses/models/course_model.dart';
+import '../../../core/api/api_endpoints.dart';
 import 'package:mehndi_student_app/features/instructor/screens/instructor_profile_screen.dart';
+
 class CoursePreviewScreen extends StatefulWidget {
   final Course course;
 
   const CoursePreviewScreen({super.key, required this.course});
 
   @override
-  State<CoursePreviewScreen> createState() => _CoursePreviewScreenState();
+  State<CoursePreviewScreen> createState() =>
+      _CoursePreviewScreenState();
 }
 
 class _CoursePreviewScreenState extends State<CoursePreviewScreen>
@@ -26,7 +29,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
     )..repeat(reverse: true);
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+      CurvedAnimation(
+          parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
@@ -51,10 +55,10 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                // ─── VIDEO PLAYER ───────────────────────
+                // ─── VIDEO PLAYER ──────────────────────
                 _buildVideoPlayer(course),
 
-                // ─── CONTENT ────────────────────────────
+                // ─── CONTENT ───────────────────────────
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -69,22 +73,19 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                           Row(
                             children: [
                               const Icon(Icons.star,
-                                  color: Color(0xFFD4AF37), size: 16),
+                                  color: Color(0xFFD4AF37),
+                                  size: 16),
                               const SizedBox(width: 4),
-                              Text(
-                                "4.9",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                " (2.1k reviews)",
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13,
-                                ),
-                              ),
+                              const Text("4.9",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  )),
+                              Text(" (2.1k reviews)",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                  )),
                             ],
                           ),
                         ],
@@ -92,7 +93,6 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
 
                       const SizedBox(height: 12),
 
-                      // Title
                       Text(
                         course.title,
                         style: const TextStyle(
@@ -106,7 +106,6 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
 
                       const SizedBox(height: 10),
 
-                      // Description
                       Text(
                         course.description.isNotEmpty
                             ? course.description
@@ -137,12 +136,10 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                       _sectionTitle("Instructor"),
                       const SizedBox(height: 14),
                       _buildInstructorCard(course),
-
                     ],
                   ),
                 ),
 
-                // Bottom spacing for sticky bar
                 const SizedBox(height: 100),
               ],
             ),
@@ -164,13 +161,12 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
   Widget _buildVideoPlayer(Course course) {
     return Stack(
       children: [
-        // Thumbnail with dark overlay
         AspectRatio(
           aspectRatio: 16 / 9,
           child: Stack(
             children: [
               Image.network(
-                "https://api.aktuhub.in/api/uploads/courses/${course.thumbnail}",
+                "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
@@ -205,16 +201,18 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
                 children: [
-                  _iconBtn(
-                      Icons.arrow_back, () => Navigator.pop(context)),
-                  // Title
+                  _iconBtn(Icons.arrow_back,
+                          () => Navigator.pop(context)),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
                           Text(
                             course.title,
@@ -249,12 +247,13 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
           top: 52,
           right: 12,
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.6),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white.withOpacity(0.15)),
+              border: Border.all(
+                  color: Colors.white.withOpacity(0.15)),
             ),
             child: const Text(
               "PREVIEW TRAILER",
@@ -279,7 +278,9 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
               child: AnimatedBuilder(
                 animation: _pulseAnimation,
                 builder: (_, child) => Transform.scale(
-                  scale: _isPlaying ? 1.0 : _pulseAnimation.value,
+                  scale: _isPlaying
+                      ? 1.0
+                      : _pulseAnimation.value,
                   child: child,
                 ),
                 child: Container(
@@ -290,14 +291,17 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFD4AF37).withOpacity(0.5),
+                        color: const Color(0xFFD4AF37)
+                            .withOpacity(0.5),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
                     ],
                   ),
                   child: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    _isPlaying
+                        ? Icons.pause
+                        : Icons.play_arrow,
                     color: Colors.white,
                     size: 36,
                   ),
@@ -307,14 +311,13 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
           ),
         ),
 
-        // Progress bar at bottom
+        // Progress bar
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
           child: Column(
             children: [
-              // Progress
               Stack(
                 children: [
                   Container(
@@ -323,7 +326,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                   ),
                   Container(
                     height: 3,
-                    width: MediaQuery.of(context).size.width * 0.33,
+                    width:
+                    MediaQuery.of(context).size.width * 0.33,
                     decoration: const BoxDecoration(
                       color: Color(0xFFD4AF37),
                       boxShadow: [
@@ -340,7 +344,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 6),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       "01:12 / 03:45",
@@ -353,10 +358,14 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                     Row(
                       children: [
                         Icon(Icons.settings,
-                            color: Colors.white.withOpacity(0.8), size: 18),
+                            color:
+                            Colors.white.withOpacity(0.8),
+                            size: 18),
                         const SizedBox(width: 12),
                         Icon(Icons.fullscreen,
-                            color: Colors.white.withOpacity(0.8), size: 18),
+                            color:
+                            Colors.white.withOpacity(0.8),
+                            size: 18),
                       ],
                     ),
                   ],
@@ -421,6 +430,12 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
 
   // ─── INSTRUCTOR CARD ─────────────────────────────────
   Widget _buildInstructorCard(Course course) {
+    final instructorName = course.instructor.isNotEmpty
+        ? course.instructor
+        : "Arun Kumar";
+    final avatarUrl =
+        "https://ui-avatars.com/api/?name=${Uri.encodeComponent(instructorName)}&background=D4AF37&color=fff";
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -442,13 +457,12 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: const Color(0xFFD4AF37).withOpacity(0.4),
+                  color:
+                  const Color(0xFFD4AF37).withOpacity(0.4),
                   width: 2),
             ),
             child: CircleAvatar(
-              backgroundImage: NetworkImage(
-                "https://ui-avatars.com/api/?name=Arun+Kumar&background=D4AF37&color=fff",
-              ),
+              backgroundImage: NetworkImage(avatarUrl),
             ),
           ),
           const SizedBox(width: 14),
@@ -466,9 +480,7 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                   ),
                 ),
                 Text(
-                  course.instructor.isNotEmpty
-                      ? course.instructor
-                      : "Arun Kumar",
+                  instructorName,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -489,55 +501,33 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => InstructorProfileScreen(
-                    instructor: Instructor(
-                      name: course.instructor.isNotEmpty
-                          ? course.instructor
-                          : "Arun Kumar",
-
-                      title: "Professional Mehndi Artist",
-
-                      imageUrl:
-                      "https://ui-avatars.com/api/?name=Arun+Kumar&background=D4AF37&color=fff",
-
-                      bio:
-                      "Professional Mehndi Artist since 2012. Specialized in bridal, Arabic, and modern mehndi designs with thousands of students trained worldwide.",
-
-                      totalCourses: 12,
-
-                      totalStudents: "25K+",
-
-                      rating: 4.9,
-
-                      courses: [
-                        InstructorCourse(
-                          title: "Bridal Mehndi Masterclass",
-                          imageUrl:
-                          "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
-
-                          lessons: 45,
-                          duration: "12h 30m",
-                          price: "₹1999",
-                          badge: "BESTSELLER",
+                  builder: (context) =>
+                      InstructorProfileScreen(
+                        instructor: Instructor(
+                          name: instructorName,
+                          title: "Professional Mehndi Artist",
+                          imageUrl: avatarUrl,
+                          bio:
+                          "Professional Mehndi Artist since 2012. Specialized in bridal, Arabic, and modern mehndi designs with thousands of students trained worldwide.",
+                          totalCourses: 12,
+                          totalStudents: "25K+",
+                          rating: 4.9,
+                          courses: [
+                            InstructorCourse(
+                              title: "Bridal Mehndi Masterclass",
+                              imageUrl:
+                              "${ApiEndpoints.courseThumbnail}${course.thumbnail}",
+                              lessons: 45,
+                              duration: "12h 30m",
+                              price: "₹1999",
+                              badge: "BESTSELLER",
+                            ),
+                          ],
                         ),
-
-                        InstructorCourse(
-                          title: "Arabic Mehndi Design Course",
-                          imageUrl:
-                          "https://images.unsplash.com/photo-1517841905240-472988babdf9",
-
-                          lessons: 30,
-                          duration: "8h 10m",
-                          price: "₹1499",
-                          badge: "POPULAR",
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
                 ),
               );
             },
-
             child: const Text(
               "View",
               style: TextStyle(
@@ -605,7 +595,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFD4AF37).withOpacity(0.35),
+                      color: const Color(0xFFD4AF37)
+                          .withOpacity(0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -650,7 +641,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
 
   Widget _badge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFD4AF37).withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
@@ -678,7 +670,8 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.4),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          border:
+          Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
       ),
@@ -696,11 +689,13 @@ class _CoursePreviewScreenState extends State<CoursePreviewScreen>
     },
     {
       "title": "Modern Fusion Styles",
-      "subtitle": "Combining Arabic and Rajasthani bridal patterns.",
+      "subtitle":
+      "Combining Arabic and Rajasthani bridal patterns.",
     },
     {
       "title": "Business of Mehndi Art",
-      "subtitle": "How to price your services and handle bridal bookings.",
+      "subtitle":
+      "How to price your services and handle bridal bookings.",
     },
   ];
 }
